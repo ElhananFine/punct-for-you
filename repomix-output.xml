@@ -1,0 +1,1015 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  components/
+    AIChat.tsx
+    GanttChart.tsx
+  data/
+    mockData.ts
+  App.tsx
+  index.css
+  main.tsx
+.env.example
+.gitignore
+index.html
+metadata.json
+package.json
+README.md
+tsconfig.json
+vite.config.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/components/AIChat.tsx">
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { X, Send, Bot, User, Sparkles, Loader2 } from 'lucide-react';
+import { GoogleGenAI } from '@google/genai';
+
+interface Message {
+  id: string;
+  role: 'user' | 'ai';
+  content: string;
+  timestamp: Date;
+}
+
+export function AIChat({ onClose }: { onClose: () => void }) {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: '1',
+      role: 'ai',
+      content: 'היי! אני העוזר החכם של פונקט מדיה. 🤖\nאני יכול לעזור לך למצוא תאריכים פנויים לפרסום, לסווג תוכן לקטגוריות, או סתם לעשות סדר בלוח השידורים.\nאיך אפשר לעזור היום?',
+      timestamp: new Date()
+    }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      // Initialize Gemini AI
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      const prompt = `
+        You are an AI assistant for a WhatsApp advertising agency called "Punkt Media" (פונקט מדיה).
+        The user is asking a question about scheduling messages, finding free slots, or categorizing content.
+        Respond in Hebrew. Be helpful, concise, and professional but friendly.
+        
+        User question: ${userMsg.content}
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-preview',
+        contents: prompt,
+      });
+
+      const aiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        content: response.text || 'מצטער, לא הצלחתי להבין. אפשר לנסות שוב?',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      console.error('AI Error:', error);
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        content: 'אופס! משהו השתבש בתקשורת עם השרת. נסה שוב מאוחר יותר.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ x: -400, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -400, opacity: 0 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed left-0 top-0 bottom-0 w-[400px] bg-[var(--color-punkt-surface)] border-r border-[var(--color-punkt-border)] shadow-2xl z-50 flex flex-col"
+    >
+      {/* Header */}
+      <div className="h-20 border-b border-[var(--color-punkt-border)] flex items-center justify-between px-6 bg-gradient-to-l from-[var(--color-punkt-surface)] to-[var(--color-punkt-bg)]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-[var(--color-punkt-green)]/20 border border-[var(--color-punkt-green)] flex items-center justify-center text-[var(--color-punkt-green)] neon-glow">
+            <Sparkles size={20} />
+          </div>
+          <div>
+            <h3 className="font-display font-bold text-lg leading-none">PUNKT AI</h3>
+            <span className="text-xs text-[var(--color-punkt-muted)]">עוזר אישי חכם</span>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-full hover:bg-white/5 transition-colors">
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {messages.map(msg => (
+          <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-[var(--color-punkt-surface-hover)] border border-[var(--color-punkt-border)]' : 'bg-[var(--color-punkt-green)] text-black neon-glow'}`}>
+              {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+            </div>
+            <div className={`max-w-[80%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-[var(--color-punkt-surface-hover)] border border-[var(--color-punkt-border)] rounded-tr-sm' : 'bg-[var(--color-punkt-green)]/10 border border-[var(--color-punkt-green)]/30 text-[var(--color-punkt-green)] rounded-tl-sm'}`}>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+              <span className="text-[10px] opacity-50 mt-2 block font-mono">
+                {msg.timestamp.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex gap-4">
+            <div className="w-8 h-8 rounded-full bg-[var(--color-punkt-green)] text-black flex items-center justify-center neon-glow">
+              <Bot size={16} />
+            </div>
+            <div className="bg-[var(--color-punkt-green)]/10 border border-[var(--color-punkt-green)]/30 rounded-2xl rounded-tl-sm p-4 flex items-center gap-2 text-[var(--color-punkt-green)]">
+              <Loader2 size={16} className="animate-spin" />
+              <span className="text-sm font-bold">חושב...</span>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-6 border-t border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)]">
+        <form onSubmit={handleSend} className="relative">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="שאל אותי על תאריכים פנויים..."
+            className="w-full bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-xl py-4 pr-4 pl-14 text-sm focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors"
+          />
+          <button 
+            type="submit"
+            disabled={!input.trim() || isLoading}
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-[var(--color-punkt-green)] text-black rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          >
+            <Send size={18} className="rotate-180" />
+          </button>
+        </form>
+      </div>
+    </motion.div>
+  );
+}
+</file>
+
+<file path="src/components/GanttChart.tsx">
+import React, { useState, useMemo } from 'react';
+import { format, addDays, startOfWeek, isSameDay, getHours, getMinutes, addWeeks, subWeeks, startOfDay, startOfMonth, getDaysInMonth, addMonths, subMonths, isBefore } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { mockMessages, ScheduledMessage } from '../data/mockData';
+import { ChevronRight, ChevronLeft, Image as ImageIcon, Video, AlignLeft, Calendar as CalendarIcon, Clock, Sparkles } from 'lucide-react';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import { motion } from 'motion/react';
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+export function GanttChart() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('week');
+
+  const startDate = useMemo(() => {
+    if (viewMode === 'month') return startOfMonth(currentDate);
+    if (viewMode === 'week') return startOfWeek(currentDate, { weekStartsOn: 0 });
+    return startOfDay(currentDate);
+  }, [currentDate, viewMode]);
+
+  const days = useMemo(() => {
+    if (viewMode === 'month') return Array.from({ length: getDaysInMonth(startDate) }, (_, i) => addDays(startDate, i));
+    if (viewMode === 'week') return Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
+    return [startDate];
+  }, [startDate, viewMode]);
+
+  const handlePrev = () => {
+    setCurrentDate(prev => {
+      if (viewMode === 'month') return subMonths(prev, 1);
+      if (viewMode === 'week') return subWeeks(prev, 1);
+      return addDays(prev, -1);
+    });
+  };
+
+  const handleNext = () => {
+    setCurrentDate(prev => {
+      if (viewMode === 'month') return addMonths(prev, 1);
+      if (viewMode === 'week') return addWeeks(prev, 1);
+      return addDays(prev, 1);
+    });
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Toolbar */}
+      <div className="p-4 flex items-center justify-between border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/50 backdrop-blur-md z-10 relative">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center bg-[var(--color-punkt-bg)] rounded-xl border border-[var(--color-punkt-border)] p-1 shadow-inner">
+            <button 
+              onClick={() => setViewMode('month')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'month' ? 'bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md' : 'text-[var(--color-punkt-muted)] hover:text-white'}`}
+            >
+              חודש
+            </button>
+            <button 
+              onClick={() => setViewMode('week')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'week' ? 'bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md' : 'text-[var(--color-punkt-muted)] hover:text-white'}`}
+            >
+              שבוע
+            </button>
+            <button 
+              onClick={() => setViewMode('day')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'day' ? 'bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md' : 'text-[var(--color-punkt-muted)] hover:text-white'}`}
+            >
+              יום
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-3 bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-xl p-1">
+            <button onClick={handleNext} className="p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]">
+              <ChevronRight size={20} />
+            </button>
+            <h3 className="text-lg font-display font-bold min-w-[180px] text-center tracking-wide">
+              {viewMode === 'month'
+                ? format(startDate, 'MMMM yyyy', { locale: he })
+                : viewMode === 'week' 
+                ? `${format(startDate, 'd MMM', { locale: he })} - ${format(addDays(startDate, 6), 'd MMM, yyyy', { locale: he })}`
+                : format(startDate, 'EEEE, d בMMMM yyyy', { locale: he })
+              }
+            </h3>
+            <button onClick={handlePrev} className="p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]">
+              <ChevronLeft size={20} />
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-6 text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-6 py-2.5 rounded-xl">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[var(--color-punkt-green)] neon-glow"></div> 
+            <span className="tracking-wide">נשלח</span>
+          </div>
+          <div className="w-px h-4 bg-[var(--color-punkt-border)]"></div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[var(--color-punkt-gold)] shadow-[0_0_10px_rgba(253,185,19,0.5)]"></div> 
+            <span className="tracking-wide">מתוזמן</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Gantt Grid */}
+      <div className="flex-1 overflow-auto relative">
+        <div className="min-w-[1200px] h-full flex flex-col">
+          {/* Header Row (Hours) */}
+          <div className="flex border-b border-[var(--color-punkt-border)] sticky top-0 z-20 bg-[var(--color-punkt-bg)]/90 backdrop-blur-md shadow-sm">
+            <div className="w-32 flex-shrink-0 border-l border-[var(--color-punkt-border)] p-4 flex items-center justify-center font-display font-bold text-[var(--color-punkt-muted)] tracking-widest uppercase">
+              {viewMode === 'day' ? 'שעה' : 'יום'}
+            </div>
+            <div className="flex-1 flex relative">
+              {HOURS.map(hour => (
+                <div key={hour} className="flex-1 border-l border-[var(--color-punkt-border)]/30 p-3 text-center text-xs text-[var(--color-punkt-muted)] font-mono font-bold">
+                  {hour.toString().padStart(2, '0')}:00
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Days Rows */}
+          <div className="flex-1 overflow-y-auto relative">
+            {days.map((day, dayIndex) => (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: dayIndex * 0.05 }}
+                key={day.toISOString()} 
+                className="flex border-b border-[var(--color-punkt-border)] min-h-[120px] group hover:bg-[var(--color-punkt-surface)]/40 transition-colors relative"
+              >
+                <div className="w-32 flex-shrink-0 border-l border-[var(--color-punkt-border)] p-4 flex flex-col items-center justify-center bg-[var(--color-punkt-surface)]/80 relative z-10">
+                  <span className="text-lg font-display font-bold tracking-wide">{format(day, 'EEEE', { locale: he })}</span>
+                  <span className="text-sm text-[var(--color-punkt-green)] font-mono mt-1">{format(day, 'dd/MM')}</span>
+                  {isSameDay(day, new Date()) && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[var(--color-punkt-green)] animate-ping"></div>
+                  )}
+                </div>
+                
+                <div className="flex-1 relative">
+                  {/* Grid Lines */}
+                  <div className="absolute inset-0 flex pointer-events-none">
+                    {HOURS.map(hour => (
+                      <div key={hour} className="flex-1 border-l border-[var(--color-punkt-border)]/20 border-dashed"></div>
+                    ))}
+                  </div>
+
+                  {/* Current Time Indicator (if today) */}
+                  {isSameDay(day, new Date()) && (
+                    <div 
+                      className="absolute top-0 bottom-0 w-px bg-[var(--color-punkt-green)] z-0 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
+                      style={{ 
+                        right: `${((getHours(new Date()) + getMinutes(new Date()) / 60) / 24) * 100}%`,
+                      }}
+                    >
+                      <div className="absolute -top-1 -translate-x-1/2 w-3 h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
+                    </div>
+                  )}
+
+                  {/* Messages */}
+                  <Tooltip.Provider delayDuration={100}>
+                    {mockMessages.filter(m => isSameDay(m.scheduledAt, day)).map((msg, idx) => {
+                      const hour = getHours(msg.scheduledAt);
+                      const minute = getMinutes(msg.scheduledAt);
+                      const leftPercent = ((hour + minute / 60) / 24) * 100;
+                      
+                      const isSent = isBefore(msg.scheduledAt, new Date());
+                      const colorClass = isSent 
+                        ? 'bg-gradient-to-br from-[var(--color-punkt-green)] to-emerald-600 text-black' 
+                        : 'bg-gradient-to-br from-[var(--color-punkt-gold)] to-amber-500 text-black';
+                      const glowClass = isSent 
+                        ? 'shadow-[0_0_20px_rgba(86,192,142,0.5)]' 
+                        : 'shadow-[0_0_20px_rgba(253,185,19,0.5)]';
+
+                      return (
+                        <Tooltip.Root key={msg.id}>
+                          <Tooltip.Trigger asChild>
+                            <motion.div 
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: 'spring', delay: (dayIndex * 0.1) + (idx * 0.05) }}
+                              className={`absolute top-1/2 -translate-y-1/2 h-14 rounded-xl flex items-center justify-center cursor-default hover:z-30 ${colorClass} ${glowClass} border-2 border-white/20`}
+                              style={{ 
+                                right: `${leftPercent}%`, 
+                                width: '48px', 
+                                transform: 'translate(50%, -50%)'
+                              }}
+                            >
+                              {msg.mediaType === 'image' && <ImageIcon size={20} />}
+                              {msg.mediaType === 'video' && <Video size={20} />}
+                              {msg.mediaType === 'text' && <AlignLeft size={20} />}
+                            </motion.div>
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content 
+                              className="z-50 bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl max-w-sm text-right glass-panel"
+                              sideOffset={10}
+                            >
+                              <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3">
+                                <div className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg">
+                                  <Clock size={14} />
+                                  {format(msg.scheduledAt, 'HH:mm')}
+                                </div>
+                                {msg.category && (
+                                  <span className="bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] px-3 py-1 rounded-lg text-xs font-bold text-[var(--color-punkt-muted)] flex items-center gap-1">
+                                    <Sparkles size={12} className="text-[var(--color-punkt-gold)]" />
+                                    {msg.category}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
+                                {msg.content}
+                              </div>
+                              {msg.mediaUrl && (
+                                <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative group">
+                                  <img src={msg.mediaUrl} alt="Media preview" className="w-full h-40 object-cover transition-transform duration-500 group-hover:scale-110" />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                    <span className="text-xs font-bold text-white flex items-center gap-1">
+                                      {msg.mediaType === 'video' ? <Video size={14} /> : <ImageIcon size={14} />}
+                                      תצוגה מקדימה
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                              <Tooltip.Arrow className="fill-[var(--color-punkt-surface)]" />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      );
+                    })}
+                  </Tooltip.Provider>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/data/mockData.ts">
+import { addDays, setHours, setMinutes, startOfWeek } from 'date-fns';
+
+export type MediaType = 'text' | 'image' | 'video';
+
+export interface ScheduledMessage {
+  id: string;
+  scheduledAt: Date;
+  content: string;
+  mediaType: MediaType;
+  mediaUrl?: string;
+  status: 'scheduled' | 'sent' | 'canceled';
+  category?: string;
+}
+
+const today = new Date();
+const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 0 });
+
+export const mockMessages: ScheduledMessage[] = [
+  {
+    id: '1',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 1), 20), 0),
+    content: '✨ *בואי להיות מאמנת אישית מקצועית*\nהצטרפי לתכנית הכשרה המשלבת *כלים מעשיים מ־CBT ו־NLP*',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&q=80',
+    status: 'sent',
+    category: 'לימודים והכשרה',
+  },
+  {
+    id: '2',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 1), 20), 30),
+    content: '*שווה שמיעה*\n👂👂👂',
+    mediaType: 'video',
+    status: 'sent',
+    category: 'מוזיקה',
+  },
+  {
+    id: '3',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 1), 19), 10),
+    content: '*את בוחרת מה לקחת❗❗*',
+    mediaType: 'video',
+    status: 'sent',
+    category: 'השראה',
+  },
+  {
+    id: '4',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 1), 21), 45),
+    content: '*שווה שמיעה*\n👂👂👂',
+    mediaType: 'video',
+    status: 'sent',
+    category: 'מוזיקה',
+  },
+  {
+    id: '5',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 1), 23), 0),
+    content: '*תחזית ארצית ליום ראשון*\nמעונן חלקית עד בהיר⛅\nתחול עלייה קלה בטמפרטורות🔝',
+    mediaType: 'text',
+    status: 'sent',
+    category: 'תחזית',
+  },
+  {
+    id: '6',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 2), 9), 0),
+    content: '*בוקר טוב ומבורך, ושבוע מלא עשייה ושפע*☀️🫶🏼✨',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1506744626753-1fa44df31c7f?w=400&q=80',
+    status: 'scheduled',
+    category: 'בוקר טוב',
+  },
+  {
+    id: '7',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 2), 11), 25),
+    content: '*טיפים שחייב לדעת* 🪰🐛🐜',
+    mediaType: 'video',
+    status: 'scheduled',
+    category: 'טיפים',
+  },
+  {
+    id: '8',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 2), 13), 40),
+    content: '*שמרו את המתכון כי הוא הולך לגרום לכם להגיד ואוווו*🍝🧀\n*מתכון לפסטה ברוטב מושחת במיוחד*✨',
+    mediaType: 'video',
+    status: 'scheduled',
+    category: 'מתכונים',
+  },
+  {
+    id: '9',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 2), 17), 35),
+    content: '*זה לא רק סיכת סבתא! 😉*💇‍♀️',
+    mediaType: 'video',
+    status: 'scheduled',
+    category: 'טיפוח',
+  },
+  {
+    id: '10',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 2), 23), 20),
+    content: '*קורע לב* 😭💔\nאחרי 5 ימים ההלוויה קורעת לב שאי אפשר לעמוד בה',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1516585427167-9f4af9627e6c?w=400&q=80',
+    status: 'scheduled',
+    category: 'צדקה',
+  },
+  {
+    id: '11',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 3), 9), 0),
+    content: '*שיהיה יום מלא ברגעים קטנים של אושר*\n*בוקר טוב*🫶🏼',
+    mediaType: 'image',
+    mediaUrl: 'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=400&q=80',
+    status: 'scheduled',
+    category: 'בוקר טוב',
+  },
+  {
+    id: '12',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 3), 14), 10),
+    content: '*פנקייק הזה כל כך אוורירי, שנראה לי שהוא עומד לעוף מהצלחת* 🥞🥞🥞',
+    mediaType: 'video',
+    status: 'scheduled',
+    category: 'מתכונים',
+  },
+  {
+    id: '13',
+    scheduledAt: setMinutes(setHours(addDays(startOfCurrentWeek, 3), 20), 30),
+    content: '*נמאס לכם להילחם עם הסילאן שנשאר על הכף? תראו את הקסם הזה...*🪄',
+    mediaType: 'video',
+    status: 'scheduled',
+    category: 'טיפים',
+  },
+];
+</file>
+
+<file path="src/App.tsx">
+import React, { useState } from 'react';
+import { Calendar, MessageSquare, Settings, LayoutDashboard, Bell, Search, Plus, Menu, X } from 'lucide-react';
+import { GanttChart } from './components/GanttChart';
+import { AIChat } from './components/AIChat';
+import { motion, AnimatePresence } from 'motion/react';
+
+export default function App() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | 'gantt' | 'settings'>('dashboard');
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[var(--color-punkt-bg)] text-[var(--color-punkt-text)]">
+      {/* Sidebar */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            className="flex-shrink-0 border-l border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)] z-20 flex flex-col"
+          >
+            <div className="p-6 flex items-center justify-between border-b border-[var(--color-punkt-border)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--color-punkt-green)] flex items-center justify-center text-[var(--color-punkt-bg)] font-bold text-xl neon-glow">
+                  P
+                </div>
+                <div>
+                  <h1 className="font-display font-bold text-xl tracking-tight leading-none">PUNKT</h1>
+                  <span className="text-xs text-[var(--color-punkt-green)] font-bold tracking-widest uppercase">Media</span>
+                </div>
+              </div>
+              <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-[var(--color-punkt-muted)] hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+              <div className="text-xs font-bold text-[var(--color-punkt-muted)] mb-4 mt-4 px-4 uppercase tracking-widest">ניהול קמפיינים</div>
+              <NavItem icon={<LayoutDashboard size={20} />} label="דשבורד ראשי" active={activeView === 'dashboard'} onClick={() => setActiveView('dashboard')} />
+              <NavItem icon={<Calendar size={20} />} label="לוח שידורים (Gantt)" active={activeView === 'gantt'} onClick={() => setActiveView('gantt')} />
+              
+              <div className="text-xs font-bold text-[var(--color-punkt-muted)] mb-4 mt-8 px-4 uppercase tracking-widest">מערכת</div>
+              <NavItem icon={<Settings size={20} />} label="הגדרות" active={activeView === 'settings'} onClick={() => setActiveView('settings')} />
+            </nav>
+
+            <div className="p-6 border-t border-[var(--color-punkt-border)]">
+              <button 
+                onClick={() => setIsChatOpen(true)}
+                className="w-full py-3 px-4 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-400 text-[var(--color-punkt-bg)] rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity neon-glow"
+              >
+                <MessageSquare size={18} />
+                <span>PUNKT AI</span>
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* Header */}
+        <header className="h-20 border-b border-[var(--color-punkt-border)] glass-panel flex items-center justify-between px-6 z-10 sticky top-0">
+          <div className="flex items-center gap-4">
+            {!isSidebarOpen && (
+              <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-lg hover:bg-[var(--color-punkt-surface)] transition-colors">
+                <Menu size={24} />
+              </button>
+            )}
+            <h2 className="text-2xl font-display font-bold">
+              {activeView === 'dashboard' ? 'דשבורד ראשי' : activeView === 'gantt' ? 'לוח שידורים' : 'הגדרות'}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative hidden md:block">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-punkt-muted)]" size={18} />
+              <input 
+                type="text" 
+                placeholder="חיפוש קמפיין..." 
+                className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-full py-2 pr-10 pl-4 text-sm focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors w-64"
+              />
+            </div>
+            <button disabled className="flex items-center gap-2 bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-full transition-colors opacity-50 cursor-not-allowed">
+              <Plus size={18} className="text-[var(--color-punkt-green)]" />
+              <span className="text-sm font-bold">תזמון חדש</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Dynamic Content Area */}
+        {activeView === 'dashboard' && (
+          <>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30">
+              <StatCard title="הודעות שנשלחו השבוע" value="124" trend="+12%" />
+              <StatCard title="מתוזמנות להיום" value="8" trend="רגיל" />
+            </div>
+            <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid">
+              <GanttChart />
+            </main>
+          </>
+        )}
+
+        {activeView === 'gantt' && (
+          <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid">
+            <GanttChart />
+          </main>
+        )}
+
+        {activeView === 'settings' && (
+          <main className="flex-1 overflow-y-auto p-6 bg-[var(--color-punkt-bg)]">
+            <div className="max-w-2xl mx-auto bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-8 mt-8">
+              <h3 className="text-xl font-display font-bold mb-6">הגדרות מערכת</h3>
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">שם העסק</label>
+                  <input type="text" defaultValue="Punkt Media" className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">מספר טלפון לבוט</label>
+                  <input type="text" defaultValue="+972-50-1234567" className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors text-left" dir="ltr" />
+                </div>
+                <div className="pt-4 border-t border-[var(--color-punkt-border)]">
+                  <button className="bg-[var(--color-punkt-green)] text-black font-bold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity">
+                    שמירת הגדרות
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
+        )}
+      </div>
+
+      {/* AI Chat Sidebar/Overlay */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <AIChat onClose={() => setIsChatOpen(false)} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function StatCard({ title, value, trend }: { title: string, value: string, trend: string }) {
+  const isPositive = trend.startsWith('+');
+  return (
+    <div className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl relative overflow-hidden group hover:border-[var(--color-punkt-green)] transition-colors">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--color-punkt-green)]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-xl group-hover:bg-[var(--color-punkt-green)]/10 transition-colors"></div>
+      <h4 className="text-sm text-[var(--color-punkt-muted)] mb-2 font-bold">{title}</h4>
+      <div className="flex items-end justify-between">
+        <span className="text-3xl font-display font-bold">{value}</span>
+        <span className={`text-xs font-bold px-2 py-1 rounded-lg ${isPositive ? 'bg-[var(--color-punkt-green)]/10 text-[var(--color-punkt-green)]' : 'bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-muted)]'}`}>
+          {trend}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) {
+
+  return (
+    <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] border border-[var(--color-punkt-border)]' : 'text-[var(--color-punkt-muted)] hover:text-white hover:bg-[var(--color-punkt-surface)]'}`}>
+      {icon}
+      <span className="font-bold text-sm">{label}</span>
+    </button>
+  );
+}
+</file>
+
+<file path="src/index.css">
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700;800&family=Space+Grotesk:wght@700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Assistant", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-punkt-bg: #111111;
+  --color-punkt-surface: #1a1a1a;
+  --color-punkt-surface-hover: #222222;
+  --color-punkt-green: #56c08e;
+  --color-punkt-gold: #fdb913;
+  --color-punkt-text: #f5f5f5;
+  --color-punkt-muted: #888888;
+  --color-punkt-border: #333333;
+}
+
+body {
+  background-color: var(--color-punkt-bg);
+  color: var(--color-punkt-text);
+  font-family: var(--font-sans);
+  direction: rtl;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-punkt-bg); 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-punkt-border); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-punkt-green); 
+}
+
+.glass-panel {
+  background: rgba(26, 26, 26, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.neon-glow {
+  box-shadow: 0 0 20px rgba(86, 192, 142, 0.3);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(86, 192, 142, 0.5);
+}
+
+.gantt-grid {
+  background-size: 100px 100px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+</file>
+
+<file path="src/main.tsx">
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App.tsx';
+import './index.css';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+</file>
+
+<file path=".env.example">
+# GEMINI_API_KEY: Required for Gemini AI API calls.
+# AI Studio automatically injects this at runtime from user secrets.
+# Users configure this via the Secrets panel in the AI Studio UI.
+GEMINI_API_KEY="MY_GEMINI_API_KEY"
+
+# APP_URL: The URL where this applet is hosted.
+# AI Studio automatically injects this at runtime with the Cloud Run service URL.
+# Used for self-referential links, OAuth callbacks, and API endpoints.
+APP_URL="MY_APP_URL"
+</file>
+
+<file path=".gitignore">
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Punkt Media - לוח שידורים</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="metadata.json">
+{
+  "name": "",
+  "description": "",
+  "requestFramePermissions": []
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.5.0",
+    "vite": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
+</file>
+
+<file path="README.md">
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/30e29bd1-5612-4296-ac70-3e7ec32a9f12
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+</file>
+
+<file path="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import {defineConfig, loadEnv} from 'vite';
+
+export default defineConfig(({mode}) => {
+  const env = loadEnv(mode, '.', '');
+  return {
+    plugins: [react(), tailwindcss()],
+    define: {
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
+      },
+    },
+    server: {
+      // HMR is disabled in AI Studio via DISABLE_HMR env var.
+      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      hmr: process.env.DISABLE_HMR !== 'true',
+    },
+  };
+});
+</file>
+
+</files>
