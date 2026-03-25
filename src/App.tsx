@@ -42,7 +42,9 @@ export default function App() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await fetch("/api/schedules");
+        const response = await fetch(
+          "https://three-of-day-yq6o.onrender.com/api/schedules",
+        );
         const data = await response.json();
         setMessages(data || []);
       } catch (error) {
