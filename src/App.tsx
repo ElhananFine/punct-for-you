@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Calendar,
   MessageSquare,
@@ -13,6 +13,19 @@ import {
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
 import { motion, AnimatePresence } from "motion/react";
+import { isSameWeek, isSameDay, parseISO, isBefore } from "date-fns";
+
+// הממשק של ההודעות כפי שהוא שמור במסד הנתונים
+export interface ScheduledMessage {
+  id: string;
+  wa_message_id: string;
+  scheduled_at: string;
+  content: string;
+  media_type: "text" | "image" | "video";
+  media_url?: string;
+  status: "scheduled" | "sent" | "canceled";
+  category?: string;
+}
 
 export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -20,6 +33,58 @@ export default function App() {
   const [activeView, setActiveView] = useState<
     "dashboard" | "gantt" | "settings"
   >("dashboard");
+
+  // סטייט עבור הנתונים מ-Supabase
+  const [messages, setMessages] = useState<ScheduledMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // שליפת הנתונים בעת טעינת האפליקציה
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch("/api/schedules");
+        const data = await response.json();
+        setMessages(data || []);
+      } catch (error) {
+        console.error("Failed to fetch schedules:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMessages();
+  }, []);
+
+  // חישוב הסטטיסטיקות בזמן אמת מתוך הנתונים שחזרו
+  const stats = useMemo(() => {
+    const now = new Date();
+    let sentThisWeek = 0;
+    let scheduledToday = 0;
+
+    messages.forEach((msg) => {
+      if (msg.status === "canceled") return; // מתעלמים מהודעות שבוטלו
+
+      const msgDate = parseISO(msg.scheduled_at);
+
+      // ספירת הודעות שנשלחו השבוע (השבוע מתחיל ביום ראשון = 0)
+      if (
+        isSameWeek(msgDate, now, { weekStartsOn: 0 }) &&
+        (msg.status === "sent" || isBefore(msgDate, now))
+      ) {
+        sentThisWeek++;
+      }
+
+      // ספירת הודעות שמתוזמנות להמשך היום (ולא נשלחו עדיין)
+      if (
+        isSameDay(msgDate, now) &&
+        msg.status === "scheduled" &&
+        !isBefore(msgDate, now)
+      ) {
+        scheduledToday++;
+      }
+    });
+
+    return { sentThisWeek, scheduledToday };
+  }, [messages]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-punkt-bg)] text-[var(--color-punkt-text)]">
@@ -143,18 +208,26 @@ export default function App() {
         {activeView === "dashboard" && (
           <>
             <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30">
-              <StatCard title="הודעות שנשלחו השבוע" value="124" trend="+12%" />
-              <StatCard title="מתוזמנות להיום" value="8" trend="רגיל" />
+              <StatCard
+                title="הודעות שנשלחו השבוע"
+                value={isLoading ? "..." : stats.sentThisWeek.toString()}
+                trend="פעיל"
+              />
+              <StatCard
+                title="מתוזמנות להיום"
+                value={isLoading ? "..." : stats.scheduledToday.toString()}
+                trend="ממתין"
+              />
             </div>
             <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid">
-              <GanttChart />
+              <GanttChart messages={messages} isLoading={isLoading} />
             </main>
           </>
         )}
 
         {activeView === "gantt" && (
           <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid">
-            <GanttChart />
+            <GanttChart messages={messages} isLoading={isLoading} />
           </main>
         )}
 

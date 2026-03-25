@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   format,
   addDays,
@@ -16,6 +16,7 @@ import {
   isBefore,
   parseISO,
 } from "date-fns";
+import { he } from "date-fns/locale";
 import {
   ChevronRight,
   ChevronLeft,
@@ -28,43 +29,18 @@ import {
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion } from "motion/react";
-import { he } from "date-fns/locale";
-
-interface ScheduledMessage {
-  id: string;
-  wa_message_id: string;
-  scheduled_at: string;
-  content: string;
-  media_type: "text" | "image" | "video";
-  media_url?: string;
-  status: "scheduled" | "sent" | "canceled";
-  category?: string;
-}
+import { ScheduledMessage } from "../App";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-export function GanttChart() {
+interface GanttChartProps {
+  messages: ScheduledMessage[];
+  isLoading: boolean;
+}
+
+export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");
-  const [messages, setMessages] = useState<ScheduledMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // שאיבת נתונים מהשרת
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        // יש לשנות את ה-URL לכתובת השרת האמיתית שלך אם זה מורץ על דומיינים שונים
-        const response = await fetch("/api/schedules");
-        const data = await response.json();
-        setMessages(data || []);
-      } catch (error) {
-        console.error("Failed to fetch schedules:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchMessages();
-  }, []);
 
   const startDate = useMemo(() => {
     if (viewMode === "month") return startOfMonth(currentDate);
@@ -98,6 +74,16 @@ export function GanttChart() {
       return addDays(prev, 1);
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-[var(--color-punkt-green)] font-bold text-xl animate-pulse">
+          טוען נתונים...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -235,7 +221,7 @@ export function GanttChart() {
                           m.status !== "canceled",
                       )
                       .map((msg, idx) => {
-                        const scheduledAtDate = parseISO(m.scheduled_at);
+                        const scheduledAtDate = parseISO(msg.scheduled_at);
                         const hour = getHours(scheduledAtDate);
                         const minute = getMinutes(scheduledAtDate);
                         const leftPercent = ((hour + minute / 60) / 24) * 100;
