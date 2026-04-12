@@ -23,9 +23,7 @@ import {
   Image as ImageIcon,
   Video,
   AlignLeft,
-  Calendar as CalendarIcon,
   Clock,
-  Sparkles,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion } from "motion/react";
@@ -88,78 +86,83 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Toolbar */}
-      <div className="p-4 flex items-center justify-between border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/50 backdrop-blur-md z-10 relative">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center bg-[var(--color-punkt-bg)] rounded-xl border border-[var(--color-punkt-border)] p-1 shadow-inner">
+      <div className="p-3 md:p-4 flex flex-col md:flex-row items-center justify-between gap-3 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/50 backdrop-blur-md z-10 relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+          {/* כפתורי תצוגה */}
+          <div className="flex items-center bg-[var(--color-punkt-bg)] rounded-xl border border-[var(--color-punkt-border)] p-1 shadow-inner w-full sm:w-auto">
             <button
               onClick={() => setViewMode("month")}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "month" ? "bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
+              className={`flex-1 sm:flex-none px-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${viewMode === "month" ? "bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
             >
               חודש
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "week" ? "bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
+              className={`flex-1 sm:flex-none px-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${viewMode === "week" ? "bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
             >
               שבוע
             </button>
             <button
               onClick={() => setViewMode("day")}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === "day" ? "bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
+              className={`flex-1 sm:flex-none px-2 py-2 rounded-lg text-xs md:text-sm font-bold transition-all ${viewMode === "day" ? "bg-[var(--color-punkt-surface-hover)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
             >
               יום
             </button>
           </div>
 
-          <div className="flex items-center gap-3 bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-xl p-1">
+          {/* ניווט תאריכים */}
+          <div className="flex items-center justify-between bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-xl p-1 w-full sm:w-auto">
             <button
               onClick={handleNext}
-              className="p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]"
+              className="p-1.5 md:p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]"
             >
-              <ChevronRight size={20} />
+              <ChevronRight size={18} />
             </button>
-            <h3 className="text-lg font-display font-bold min-w-[180px] text-center tracking-wide">
+            <h3 className="text-sm md:text-lg font-display font-bold min-w-[140px] md:min-w-[180px] text-center tracking-wide truncate px-2">
               {viewMode === "month"
                 ? format(startDate, "MMMM yyyy", { locale: he })
                 : viewMode === "week"
-                  ? `${format(startDate, "d MMM", { locale: he })} - ${format(addDays(startDate, 6), "d MMM, yyyy", { locale: he })}`
+                  ? `${format(startDate, "d MMM", { locale: he })} - ${format(addDays(startDate, 6), "d MMM yyyy", { locale: he })}`
                   : format(startDate, "EEEE, d בMMMM yyyy", { locale: he })}
             </h3>
             <button
               onClick={handlePrev}
-              className="p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]"
+              className="p-1.5 md:p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={18} />
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-6 text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-6 py-2.5 rounded-xl">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[var(--color-punkt-green)] neon-glow"></div>
+        {/* מקרא */}
+        <div className="flex justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)] neon-glow"></div>
             <span className="tracking-wide">נשלח</span>
           </div>
-          <div className="w-px h-4 bg-[var(--color-punkt-border)]"></div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-[var(--color-punkt-gold)] shadow-[0_0_10px_rgba(253,185,19,0.5)]"></div>
+          <div className="w-px h-3 md:h-4 bg-[var(--color-punkt-border)]"></div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-gold)] shadow-[0_0_10px_rgba(253,185,19,0.5)]"></div>
             <span className="tracking-wide">מתוזמן</span>
           </div>
         </div>
       </div>
 
-      {/* Gantt Grid */}
-      <div className="flex-1 overflow-auto relative">
-        <div className="min-w-[1200px] h-full flex flex-col">
+      {/* Gantt Grid Wrapper */}
+      <div className="flex-1 overflow-auto relative bg-[var(--color-punkt-bg)]">
+        {/* Container that forces horizontal scroll */}
+        <div className="min-w-fit flex flex-col">
           {/* Header Row (Hours) */}
-          <div className="flex border-b border-[var(--color-punkt-border)] sticky top-0 z-20 bg-[var(--color-punkt-bg)]/90 backdrop-blur-md shadow-sm">
-            <div className="w-32 flex-shrink-0 border-l border-[var(--color-punkt-border)] p-4 flex items-center justify-center font-display font-bold text-[var(--color-punkt-muted)] tracking-widest uppercase">
+          <div className="flex sticky top-0 z-30 bg-[var(--color-punkt-bg)]/95 backdrop-blur-md shadow-sm border-b border-[var(--color-punkt-border)]">
+            <div className="w-20 md:w-32 flex-shrink-0 sticky right-0 z-40 bg-[var(--color-punkt-bg)] border-l border-[var(--color-punkt-border)] p-2 md:p-4 flex items-center justify-center font-display font-bold text-xs md:text-sm text-[var(--color-punkt-muted)] tracking-widest uppercase shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.5)]">
               {viewMode === "day" ? "שעה" : "יום"}
             </div>
-            <div className="flex-1 flex relative">
+            {/* ציר הזמן למעלה (רוחב קבוע כדי לאפשר גלילה) */}
+            <div className="flex relative w-[800px] md:w-[1200px]">
               {HOURS.map((hour) => (
                 <div
                   key={hour}
-                  className="flex-1 border-l border-[var(--color-punkt-border)]/30 p-3 text-center text-xs text-[var(--color-punkt-muted)] font-mono font-bold"
+                  className="flex-1 border-l border-[var(--color-punkt-border)]/30 p-2 md:p-3 text-center text-[10px] md:text-xs text-[var(--color-punkt-muted)] font-mono font-bold"
                 >
                   {hour.toString().padStart(2, "0")}:00
                 </div>
@@ -168,28 +171,30 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
 
           {/* Days Rows */}
-          <div className="flex-1 overflow-y-auto relative">
+          <div className="flex-1">
             {days.map((day, dayIndex) => (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: dayIndex * 0.05 }}
                 key={day.toISOString()}
-                className="flex border-b border-[var(--color-punkt-border)] min-h-[120px] group hover:bg-[var(--color-punkt-surface)]/40 transition-colors relative"
+                className="flex border-b border-[var(--color-punkt-border)] min-h-[90px] md:min-h-[120px] group hover:bg-[var(--color-punkt-surface)]/40 transition-colors"
               >
-                <div className="w-32 flex-shrink-0 border-l border-[var(--color-punkt-border)] p-4 flex flex-col items-center justify-center bg-[var(--color-punkt-surface)]/80 relative z-10">
-                  <span className="text-lg font-display font-bold tracking-wide">
+                {/* תא צדדי (נעוץ לימין) */}
+                <div className="w-20 md:w-32 flex-shrink-0 sticky right-0 z-20 bg-[var(--color-punkt-surface)]/95 backdrop-blur-md border-l border-[var(--color-punkt-border)] p-2 md:p-4 flex flex-col items-center justify-center shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.3)]">
+                  <span className="text-sm md:text-lg font-display font-bold tracking-wide text-center">
                     {format(day, "EEEE", { locale: he })}
                   </span>
-                  <span className="text-sm text-[var(--color-punkt-green)] font-mono mt-1">
+                  <span className="text-[10px] md:text-sm text-[var(--color-punkt-green)] font-mono mt-1">
                     {format(day, "dd/MM")}
                   </span>
                   {isSameDay(day, new Date()) && (
-                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[var(--color-punkt-green)] animate-ping"></div>
+                    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[var(--color-punkt-green)] animate-ping"></div>
                   )}
                 </div>
 
-                <div className="flex-1 relative">
+                {/* אזור התזמונים השייך לשורה */}
+                <div className="relative w-[800px] md:w-[1200px] flex-shrink-0">
                   {/* Grid Lines */}
                   <div className="absolute inset-0 flex pointer-events-none">
                     {HOURS.map((hour) => (
@@ -200,20 +205,20 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                     ))}
                   </div>
 
-                  {/* Current Time Indicator (if today) */}
+                  {/* סמן זמן נוכחי (רק אם זה היום) */}
                   {isSameDay(day, new Date()) && (
                     <div
-                      className="absolute top-0 bottom-0 w-px bg-[var(--color-punkt-green)] z-0 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
+                      className="absolute top-0 bottom-0 w-px bg-[var(--color-punkt-green)] z-10 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
                       style={{
                         right: `${((getHours(new Date()) + getMinutes(new Date()) / 60) / 24) * 100}%`,
                       }}
                     >
-                      <div className="absolute -top-1 -translate-x-1/2 w-3 h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
+                      <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
                     </div>
                   )}
 
-                  {/* Messages */}
-                  <Tooltip.Provider delayDuration={100}>
+                  {/* הודעות בתוך הציר */}
+                  <Tooltip.Provider delayDuration={0}>
                     {messages
                       .filter(
                         (m) =>
@@ -233,12 +238,11 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                           ? "bg-gradient-to-br from-[var(--color-punkt-green)] to-emerald-600 text-black"
                           : "bg-gradient-to-br from-[var(--color-punkt-gold)] to-amber-500 text-black";
                         const glowClass = isSent
-                          ? "shadow-[0_0_20px_rgba(86,192,142,0.5)]"
-                          : "shadow-[0_0_20px_rgba(253,185,19,0.5)]";
+                          ? "shadow-[0_0_15px_rgba(86,192,142,0.4)] md:shadow-[0_0_20px_rgba(86,192,142,0.5)]"
+                          : "shadow-[0_0_15px_rgba(253,185,19,0.4)] md:shadow-[0_0_20px_rgba(253,185,19,0.5)]";
 
                         return (
                           <Tooltip.Root key={msg.id}>
-                            {/* ה-Trigger נשאר זהה */}
                             <Tooltip.Trigger asChild>
                               <motion.div
                                 initial={{ scale: 0 }}
@@ -247,53 +251,53 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                   type: "spring",
                                   delay: dayIndex * 0.1 + idx * 0.05,
                                 }}
-                                className={`absolute top-1/2 -translate-y-1/2 h-14 rounded-xl flex items-center justify-center cursor-default hover:z-30 ${colorClass} ${glowClass} border-2 border-white/20`}
+                                className={`absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-default hover:z-30 ${colorClass} ${glowClass} border-2 border-white/20`}
                                 style={{
                                   right: `${leftPercent}%`,
-                                  width: "48px",
+                                  width: "40px", // מותאם גם למובייל
                                   transform: "translate(50%, -50%)",
                                 }}
                               >
                                 {msg.media_type === "image" && (
-                                  <ImageIcon size={20} />
+                                  <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
                                 )}
                                 {msg.media_type === "video" && (
-                                  <Video size={20} />
+                                  <Video className="w-4 h-4 md:w-5 md:h-5" />
                                 )}
                                 {msg.media_type === "text" && (
-                                  <AlignLeft size={20} />
+                                  <AlignLeft className="w-4 h-4 md:w-5 md:h-5" />
                                 )}
                               </motion.div>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
                               <Tooltip.Content
-                                className="z-50 bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl max-w-sm text-right glass-panel"
+                                className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[260px] md:w-auto md:max-w-sm text-right glass-panel"
                                 sideOffset={10}
+                                collisionPadding={10} // שומר שלא יחתך בקצוות המסך
                               >
-                                <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3">
-                                  <div className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg">
+                                <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3">
+                                  <div className="flex items-center gap-2 text-xs md:text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg">
                                     <Clock size={14} />
                                     {format(scheduledAtDate, "HH:mm")}
                                   </div>
                                 </div>
-                                <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
+                                <div className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
                                   {msg.content}
                                 </div>
 
-                                {/* טיפול במדיה - וידאו או תמונה */}
                                 {msg.media_url && (
-                                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
+                                  <div className="mt-3 md:mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
                                     {msg.media_type === "video" ? (
                                       <video
                                         src={msg.media_url}
                                         controls
-                                        className="w-full h-48 object-cover bg-black"
+                                        className="w-full h-32 md:h-48 object-cover bg-black"
                                       />
                                     ) : (
                                       <img
                                         src={msg.media_url}
                                         alt="Media preview"
-                                        className="w-full h-40 object-cover"
+                                        className="w-full h-32 md:h-40 object-cover"
                                       />
                                     )}
                                   </div>
