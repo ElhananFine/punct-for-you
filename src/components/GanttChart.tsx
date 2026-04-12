@@ -40,7 +40,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");
 
-  // זיהוי מצב מובייל כדי להציג את היומן האנכי
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -97,7 +96,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
       {/* Toolbar */}
       <div className="p-3 md:p-4 flex flex-col md:flex-row items-center justify-between gap-3 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/50 backdrop-blur-md z-10 relative flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-          {/* כפתורי תצוגה */}
           <div className="flex items-center bg-[var(--color-punkt-bg)] rounded-xl border border-[var(--color-punkt-border)] p-1 shadow-inner w-full sm:w-auto">
             <button
               onClick={() => setViewMode("month")}
@@ -119,7 +117,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
             </button>
           </div>
 
-          {/* ניווט תאריכים */}
           <div className="flex items-center justify-between bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-xl p-1 w-full sm:w-auto">
             <button
               onClick={handleNext}
@@ -143,7 +140,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
         </div>
 
-        {/* מקרא */}
         <div className="flex justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)] neon-glow"></div>
@@ -157,41 +153,49 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       </div>
 
-      {/* Render Vertical Agenda View for Mobile Day Mode */}
       {viewMode === "day" && isMobile ? (
         <MobileVerticalDayView messages={messages} date={startDate} />
       ) : (
-        /* Gantt Grid Wrapper (Horizontal) */
-        <div className="flex-1 overflow-auto relative bg-[var(--color-punkt-bg)]">
-          <div className="min-w-fit flex flex-col h-full">
+        /* Container that stretches properly on desktop but enforces min-width */
+        <div className="flex-1 overflow-x-auto overflow-y-auto bg-[var(--color-punkt-bg)]">
+          <div className="min-w-[800px] lg:min-w-[1200px] flex flex-col h-full w-full">
             {/* Header Row (Hours) */}
             <div className="flex sticky top-0 z-30 bg-[var(--color-punkt-bg)]/95 backdrop-blur-md shadow-sm border-b border-[var(--color-punkt-border)]">
               <div className="w-20 md:w-32 flex-shrink-0 sticky right-0 z-40 bg-[var(--color-punkt-bg)] border-l border-[var(--color-punkt-border)] p-2 md:p-4 flex items-center justify-center font-display font-bold text-xs md:text-sm text-[var(--color-punkt-muted)] tracking-widest uppercase shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.5)]">
                 {viewMode === "day" ? "שעה" : "יום"}
               </div>
-              <div className="flex relative w-[800px] md:w-[1200px]">
+
+              {/* ממוקם בדיוק מתמטי (אחוזים) כדי שלא יזוז פיקסל */}
+              {/* ממוקם בדיוק מתמטי (אחוזים) כדי שלא יזוז פיקסל */}
+              <div className="flex-1 relative min-h-[40px] md:min-h-[50px] overflow-hidden">
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
-                    className="flex-1 border-l border-[var(--color-punkt-border)]/30 p-2 md:p-3 text-center text-[10px] md:text-xs text-[var(--color-punkt-muted)] font-mono font-bold"
+                    className="absolute top-0 bottom-0 border-r border-[var(--color-punkt-border)]/30"
+                    style={{ right: `${(hour / 24) * 100}%` }}
                   >
-                    {hour.toString().padStart(2, "0")}:00
+                    {/* במובייל מסתירים שעות אי-זוגיות ומסתירים את ה-:00 */}
+                    <span
+                      className={`absolute top-1/2 -translate-y-1/2 right-1 md:right-2 text-[10px] md:text-xs text-[var(--color-punkt-muted)] font-mono font-bold ${hour % 2 !== 0 ? "hidden md:block" : ""}`}
+                    >
+                      {hour.toString().padStart(2, "0")}
+                      <span className="hidden md:inline">:00</span>
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Days Rows */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col relative pb-10">
               {days.map((day, dayIndex) => (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: dayIndex * 0.05 }}
                   key={day.toISOString()}
-                  className="flex border-b border-[var(--color-punkt-border)] min-h-[90px] md:min-h-[120px] group hover:bg-[var(--color-punkt-surface)]/40 transition-colors flex-1"
+                  className="flex border-b border-[var(--color-punkt-border)] min-h-[90px] md:min-h-[120px] group hover:bg-[var(--color-punkt-surface)]/40 transition-colors"
                 >
-                  {/* תא צדדי (נעוץ לימין) */}
                   <div className="w-20 md:w-32 flex-shrink-0 sticky right-0 z-20 bg-[var(--color-punkt-surface)]/95 backdrop-blur-md border-l border-[var(--color-punkt-border)] p-2 md:p-4 flex flex-col items-center justify-center shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.3)]">
                     <span className="text-sm md:text-lg font-display font-bold tracking-wide text-center">
                       {format(day, "EEEE", { locale: he })}
@@ -204,31 +208,28 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                     )}
                   </div>
 
-                  {/* אזור התזמונים השייך לשורה */}
-                  <div className="relative w-[800px] md:w-[1200px] flex-shrink-0">
-                    {/* Grid Lines */}
-                    <div className="absolute inset-0 flex pointer-events-none">
+                  <div className="flex-1 relative">
+                    <div className="absolute inset-0 pointer-events-none">
                       {HOURS.map((hour) => (
                         <div
                           key={hour}
-                          className="flex-1 border-l border-[var(--color-punkt-border)]/20 border-dashed"
-                        ></div>
+                          className="absolute top-0 bottom-0 border-r border-[var(--color-punkt-border)]/15 border-dashed"
+                          style={{ right: `${(hour / 24) * 100}%` }}
+                        />
                       ))}
                     </div>
 
-                    {/* סמן זמן נוכחי */}
                     {isSameDay(day, new Date()) && (
                       <div
-                        className="absolute top-0 bottom-0 w-px bg-[var(--color-punkt-green)] z-10 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
+                        className="absolute top-0 bottom-0 w-[2px] bg-[var(--color-punkt-green)] z-10 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
                         style={{
                           right: `${((getHours(new Date()) + getMinutes(new Date()) / 60) / 24) * 100}%`,
                         }}
                       >
-                        <div className="absolute -top-1 -translate-x-1/2 w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
+                        <div className="absolute -top-1 right-1/2 translate-x-1/2 w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
                       </div>
                     )}
 
-                    {/* הודעות בתוך הציר */}
                     <Tooltip.Provider delayDuration={0}>
                       {messages
                         .filter(
@@ -331,7 +332,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
   );
 }
 
-// קומפוננטה חדשה לתצוגת יומן אנכית במובייל (רשימה לפי שעות)
 function MobileVerticalDayView({
   messages,
   date,
@@ -343,7 +343,6 @@ function MobileVerticalDayView({
     <div className="flex-1 overflow-y-auto relative bg-[var(--color-punkt-bg)]">
       <div className="flex flex-col pb-20">
         {HOURS.map((hour) => {
-          // מציאת הודעות השייכות לשעה הספציפית הזו
           const hourMsgs = messages.filter((m) => {
             const d = parseISO(m.scheduled_at);
             return (
@@ -353,7 +352,6 @@ function MobileVerticalDayView({
             );
           });
 
-          // מיקוד על שעה רק אם היא שעת הבוקר והלאה או שיש בה הודעות (לא חובה אבל נשאיר הכל לאחידות)
           return (
             <div
               key={hour}
