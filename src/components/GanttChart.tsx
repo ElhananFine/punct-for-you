@@ -24,9 +24,10 @@ import {
   Video,
   AlignLeft,
   Clock,
+  X,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { ScheduledMessage } from "../App";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -41,7 +42,8 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-
+  const [selectedMessage, setSelectedMessage] =
+    useState<ScheduledMessage | null>(null);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
@@ -257,6 +259,9 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                             <Tooltip.Root key={msg.id}>
                               <Tooltip.Trigger asChild>
                                 <motion.div
+                                  onClick={() =>
+                                    isMobile && setSelectedMessage(msg)
+                                  }
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}
                                   transition={{
@@ -328,6 +333,61 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
         </div>
       )}
+      {/* פופאפ למובייל כשלוחצים על הודעה */}
+      <AnimatePresence>
+        {selectedMessage && isMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedMessage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl w-full max-w-sm glass-panel"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3">
+                <div className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg">
+                  <Clock size={14} />
+                  {format(parseISO(selectedMessage.scheduled_at), "HH:mm")}
+                </div>
+                <button
+                  onClick={() => setSelectedMessage(null)}
+                  className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200 max-h-[40vh] overflow-y-auto">
+                {selectedMessage.content}
+              </div>
+
+              {selectedMessage.media_url && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
+                  {selectedMessage.media_type === "video" ? (
+                    <video
+                      src={selectedMessage.media_url}
+                      controls
+                      className="w-full h-48 object-cover bg-black"
+                    />
+                  ) : (
+                    <img
+                      src={selectedMessage.media_url}
+                      alt="Media preview"
+                      className="w-full h-48 object-cover"
+                    />
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
