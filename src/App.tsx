@@ -176,7 +176,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="font-display font-bold text-xl tracking-tight leading-none">
-                    PUNKT
+                    PUNCT
                   </h1>
                   <span className="text-xs text-[var(--color-punkt-green)] font-bold tracking-widest uppercase">
                     Media
@@ -228,7 +228,7 @@ export default function App() {
                 className="w-full py-3 px-4 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-400 text-[var(--color-punkt-bg)] rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity neon-glow"
               >
                 <MessageSquare size={18} />
-                <span>PUNKT AI</span>
+                <span>PUNCT AI</span>
               </button>
             </div>
           </motion.aside>

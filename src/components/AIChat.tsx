@@ -102,7 +102,7 @@ export function AIChat({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <h3 className="font-display font-bold text-lg leading-none">
-              PUNKT AI
+              PUNCT AI
             </h3>
             <span className="text-xs text-[var(--color-punkt-muted)]">
               עוזר אישי חכם
