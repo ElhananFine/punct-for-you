@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion, AnimatePresence } from "motion/react";
-import { ScheduledMessage } from "../App";
+import { ScheduledMessage, GROUPS } from "../App";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -37,13 +37,25 @@ interface GanttChartProps {
   isLoading: boolean;
 }
 
+function getGroupColor(groupId?: string) {
+  const group = GROUPS.find((g) => g.id === (groupId || "punkt_foryou"));
+  return group ? group.color : "#56c08e";
+}
+
+function hexToRgb(hex: string) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? `${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}`
+    : "86, 192, 142";
+}
+
 export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");
-
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [selectedMessage, setSelectedMessage] =
     useState<ScheduledMessage | null>(null);
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
@@ -95,7 +107,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Toolbar */}
       <div className="p-3 md:p-4 flex flex-col md:flex-row items-center justify-between gap-3 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/50 backdrop-blur-md z-10 relative flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           <div className="flex items-center bg-[var(--color-punkt-bg)] rounded-xl border border-[var(--color-punkt-border)] p-1 shadow-inner w-full sm:w-auto">
@@ -144,7 +155,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
 
         <div className="flex justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)] neon-glow"></div>
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white neon-glow"></div>
             <span className="tracking-wide">נשלח</span>
           </div>
           <div className="w-px h-3 md:h-4 bg-[var(--color-punkt-border)]"></div>
@@ -158,17 +169,12 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
       {viewMode === "day" && isMobile ? (
         <MobileVerticalDayView messages={messages} date={startDate} />
       ) : (
-        /* Container that stretches properly on desktop but enforces min-width */
         <div className="flex-1 overflow-x-auto overflow-y-auto bg-[var(--color-punkt-bg)]">
           <div className="min-w-[800px] lg:min-w-[1200px] flex flex-col h-full w-full">
-            {/* Header Row (Hours) */}
             <div className="flex sticky top-0 z-30 bg-[var(--color-punkt-bg)]/95 backdrop-blur-md shadow-sm border-b border-[var(--color-punkt-border)]">
               <div className="w-20 md:w-32 flex-shrink-0 sticky right-0 z-40 bg-[var(--color-punkt-bg)] border-l border-[var(--color-punkt-border)] p-2 md:p-4 flex items-center justify-center font-display font-bold text-xs md:text-sm text-[var(--color-punkt-muted)] tracking-widest uppercase shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.5)]">
                 {viewMode === "day" ? "שעה" : "יום"}
               </div>
-
-              {/* ממוקם בדיוק מתמטי (אחוזים) כדי שלא יזוז פיקסל */}
-              {/* ממוקם בדיוק מתמטי (אחוזים) כדי שלא יזוז פיקסל */}
               <div className="flex-1 relative min-h-[40px] md:min-h-[50px] overflow-hidden">
                 {HOURS.map((hour) => (
                   <div
@@ -176,7 +182,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                     className="absolute top-0 bottom-0 border-r border-[var(--color-punkt-border)]/30"
                     style={{ right: `${(hour / 24) * 100}%` }}
                   >
-                    {/* במובייל מסתירים שעות אי-זוגיות ומסתירים את ה-:00 */}
                     <span
                       className={`absolute top-1/2 -translate-y-1/2 right-1 md:right-2 text-[10px] md:text-xs text-[var(--color-punkt-muted)] font-mono font-bold ${hour % 2 !== 0 ? "hidden md:block" : ""}`}
                     >
@@ -188,7 +193,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
               </div>
             </div>
 
-            {/* Days Rows */}
             <div className="flex-1 flex flex-col relative pb-10">
               {days.map((day, dayIndex) => (
                 <motion.div
@@ -244,16 +248,25 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                           const hour = getHours(scheduledAtDate);
                           const minute = getMinutes(scheduledAtDate);
                           const leftPercent = ((hour + minute / 60) / 24) * 100;
-
                           const isSent =
                             msg.status === "sent" ||
                             isBefore(scheduledAtDate, new Date());
-                          const colorClass = isSent
-                            ? "bg-gradient-to-br from-[var(--color-punkt-green)] to-emerald-600 text-black"
-                            : "bg-gradient-to-br from-[var(--color-punkt-gold)] to-amber-500 text-black";
-                          const glowClass = isSent
-                            ? "shadow-[0_0_15px_rgba(86,192,142,0.4)] md:shadow-[0_0_20px_rgba(86,192,142,0.5)]"
-                            : "shadow-[0_0_15px_rgba(253,185,19,0.4)] md:shadow-[0_0_20px_rgba(253,185,19,0.5)]";
+
+                          const baseColor = getGroupColor(msg.group_id);
+                          const rgbColor = hexToRgb(baseColor);
+
+                          const bgStyle = isSent
+                            ? {
+                                backgroundColor: baseColor,
+                                color: "#000",
+                                boxShadow: `0 0 15px rgba(${rgbColor},0.5)`,
+                              }
+                            : {
+                                backgroundColor: "var(--color-punkt-gold)",
+                                color: "#000",
+                                boxShadow: `0 0 15px rgba(253,185,19,0.5)`,
+                                border: `2px dashed ${baseColor}`,
+                              };
 
                           return (
                             <Tooltip.Root key={msg.id}>
@@ -268,11 +281,12 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     type: "spring",
                                     delay: dayIndex * 0.1 + idx * 0.05,
                                   }}
-                                  className={`absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-default hover:z-30 ${colorClass} ${glowClass} border-2 border-white/20`}
+                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-default hover:z-30 border-2 border-white/20"
                                   style={{
                                     right: `${leftPercent}%`,
                                     width: "40px",
                                     transform: "translate(50%, -50%)",
+                                    ...bgStyle,
                                   }}
                                 >
                                   {msg.media_type === "image" && (
@@ -293,15 +307,32 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                   collisionPadding={10}
                                 >
                                   <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3">
-                                    <div className="flex items-center gap-2 text-xs md:text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg">
+                                    <div
+                                      className="flex items-center gap-2 text-xs md:text-sm font-mono font-bold px-3 py-1 rounded-lg"
+                                      style={{
+                                        color: baseColor,
+                                        backgroundColor: `rgba(${rgbColor},0.1)`,
+                                      }}
+                                    >
                                       <Clock size={14} />
                                       {format(scheduledAtDate, "HH:mm")}
                                     </div>
+                                    <span
+                                      className="text-xs font-bold text-[var(--color-punkt-muted)] bg-[var(--color-punkt-bg)] px-2 py-1 rounded-md border"
+                                      style={{ borderColor: baseColor }}
+                                    >
+                                      {
+                                        GROUPS.find(
+                                          (g) =>
+                                            g.id ===
+                                            (msg.group_id || "punkt_foryou"),
+                                        )?.name
+                                      }
+                                    </span>
                                   </div>
                                   <div className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
                                     {msg.content}
                                   </div>
-
                                   {msg.media_url && (
                                     <div className="mt-3 md:mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
                                       {msg.media_type === "video" ? (
@@ -333,7 +364,8 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
         </div>
       )}
-      {/* פופאפ למובייל כשלוחצים על הודעה */}
+
+      {/* פופאפ מובייל */}
       <AnimatePresence>
         {selectedMessage && isMobile && (
           <motion.div
@@ -351,7 +383,10 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3">
-                <div className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg">
+                <div
+                  className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg"
+                  style={{ color: getGroupColor(selectedMessage.group_id) }}
+                >
                   <Clock size={14} />
                   {format(parseISO(selectedMessage.scheduled_at), "HH:mm")}
                 </div>
@@ -362,11 +397,9 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                   <X size={20} />
                 </button>
               </div>
-
               <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200 max-h-[40vh] overflow-y-auto">
                 {selectedMessage.content}
               </div>
-
               {selectedMessage.media_url && (
                 <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
                   {selectedMessage.media_type === "video" ? (
@@ -435,48 +468,35 @@ function MobileVerticalDayView({
                       msg.status === "sent" ||
                       isBefore(scheduledAtDate, new Date());
 
+                    const baseColor = getGroupColor(msg.group_id);
+                    const rgbColor = hexToRgb(baseColor);
+
                     return (
                       <div
                         key={msg.id}
-                        className={`p-3 rounded-xl border relative z-10 ${
-                          isSent
-                            ? "bg-gradient-to-br from-[var(--color-punkt-green)]/10 to-emerald-600/5 border-[var(--color-punkt-green)]/30 text-gray-200"
-                            : "bg-gradient-to-br from-[var(--color-punkt-gold)]/10 to-amber-500/5 border-[var(--color-punkt-gold)]/30 text-gray-200"
-                        }`}
+                        className={`p-3 rounded-xl border relative z-10 text-gray-200`}
+                        style={{
+                          borderColor: isSent
+                            ? `rgba(${rgbColor},0.3)`
+                            : "rgba(253,185,19,0.3)",
+                          background: isSent
+                            ? `linear-gradient(to bottom right, rgba(${rgbColor},0.1), rgba(${rgbColor},0.02))`
+                            : "linear-gradient(to bottom right, rgba(253,185,19,0.1), rgba(253,185,19,0.02))",
+                        }}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2 text-[var(--color-punkt-muted)]">
+                          <div
+                            className="flex items-center gap-2"
+                            style={{ color: baseColor }}
+                          >
                             {msg.media_type === "image" && (
-                              <ImageIcon
-                                size={14}
-                                className={
-                                  isSent
-                                    ? "text-[var(--color-punkt-green)]"
-                                    : "text-[var(--color-punkt-gold)]"
-                                }
-                              />
+                              <ImageIcon size={14} />
                             )}
-                            {msg.media_type === "video" && (
-                              <Video
-                                size={14}
-                                className={
-                                  isSent
-                                    ? "text-[var(--color-punkt-green)]"
-                                    : "text-[var(--color-punkt-gold)]"
-                                }
-                              />
-                            )}
+                            {msg.media_type === "video" && <Video size={14} />}
                             {msg.media_type === "text" && (
-                              <AlignLeft
-                                size={14}
-                                className={
-                                  isSent
-                                    ? "text-[var(--color-punkt-green)]"
-                                    : "text-[var(--color-punkt-gold)]"
-                                }
-                              />
+                              <AlignLeft size={14} />
                             )}
-                            <span className="text-[11px] font-mono font-bold">
+                            <span className="text-[11px] font-mono font-bold text-[var(--color-punkt-muted)]">
                               {format(scheduledAtDate, "HH:mm")}
                             </span>
                           </div>
