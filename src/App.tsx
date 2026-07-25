@@ -11,6 +11,9 @@ import {
   Send,
   Loader2,
   Paperclip,
+  Zap,
+  EyeOff,
+  Clock as ClockIcon,
 } from "lucide-react";
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
@@ -29,7 +32,6 @@ export interface ScheduledMessage {
   group_id?: string;
 }
 
-// 1. הגדרת מערך הקבוצות (חייב לתאום ל-Backend)
 export const GROUPS = [
   { id: "punkt_foryou", name: "פונקט בשבילך", color: "#56c08e" },
   { id: "salon_nashi", name: "סלון נשי", color: "#ec4899" },
@@ -49,6 +51,13 @@ export default function App() {
 
   const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // States for Bot Commands
+  const [sendNow, setSendNow] = useState(false);
+  const [isStatus, setIsStatus] = useState(false);
+  const [noSignature, setNoSignature] = useState(false);
+  const [pauseOption, setPauseOption] = useState("none");
+
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -122,7 +131,12 @@ export default function App() {
     try {
       const formData = new FormData(e.currentTarget);
 
-      // החלף ב-URL המדויק של ה-Edge function שלך!
+      // הוספת פקודות הבוט ל-FormData
+      formData.append("sendNow", sendNow.toString());
+      formData.append("isStatus", isStatus.toString());
+      formData.append("noSignature", noSignature.toString());
+      formData.append("pause", pauseOption);
+
       const SUPABASE_FUNCTION_URL =
         "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule";
 
@@ -138,6 +152,12 @@ export default function App() {
       }
 
       setIsNewScheduleOpen(false);
+      // Reset form states
+      setSendNow(false);
+      setIsStatus(false);
+      setNoSignature(false);
+      setPauseOption("none");
+
       setTimeout(() => fetchMessages(), 2000);
     } catch (error: any) {
       alert("קרתה תקלה בשליחה: " + error.message);
@@ -236,7 +256,8 @@ export default function App() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col min-w-0 relative w-full">
-        <header className="h-16 lg:h-20 border-b border-[var(--color-punkt-border)] glass-panel flex items-center justify-between px-4 lg:px-6 z-10 sticky top-0">
+        {/* Header - Fixed z-index to allow button clicks */}
+        <header className="h-16 lg:h-20 border-b border-[var(--color-punkt-border)] glass-panel flex items-center justify-between px-4 lg:px-6 z-30 sticky top-0">
           <div className="flex items-center gap-3 lg:gap-4">
             {!isSidebarOpen && (
               <button
@@ -270,7 +291,7 @@ export default function App() {
 
             <button
               onClick={() => setIsNewScheduleOpen(true)}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-500 text-black w-10 h-10 lg:w-auto lg:px-4 lg:py-2 rounded-full transition-all hover:scale-105"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-500 text-black w-10 h-10 lg:w-auto lg:px-4 lg:py-2 rounded-full transition-all hover:scale-105 cursor-pointer relative z-50 shadow-lg"
             >
               <Plus size={18} />
               <span className="hidden lg:block text-sm font-bold">
@@ -283,7 +304,7 @@ export default function App() {
         {(activeView === "dashboard" || activeView === "gantt") && (
           <div className="flex flex-col h-full overflow-hidden">
             {activeView === "dashboard" && (
-              <div className="p-4 lg:p-6 grid grid-cols-2 gap-3 lg:gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30 flex-shrink-0">
+              <div className="p-4 lg:p-6 grid grid-cols-2 gap-3 lg:gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30 flex-shrink-0 z-10 relative">
                 <StatCard
                   title="נשלח השבוע"
                   value={isLoading ? "..." : stats.sentThisWeek.toString()}
@@ -297,8 +318,7 @@ export default function App() {
               </div>
             )}
 
-            {/* פילטר קבוצות */}
-            <div className="px-4 py-3 flex gap-2 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0">
+            <div className="px-4 py-3 flex gap-2 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 z-10 relative">
               <button
                 onClick={() => setSelectedGroup("all")}
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${selectedGroup === "all" ? "bg-white text-black" : "bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] text-[var(--color-punkt-muted)] hover:text-white"}`}
@@ -330,14 +350,14 @@ export default function App() {
               ))}
             </div>
 
-            <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid">
+            <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid z-0">
               <GanttChart messages={filteredMessages} isLoading={isLoading} />
             </main>
           </div>
         )}
 
         {activeView === "settings" && (
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)]">
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)] z-0 relative">
             <div className="max-w-2xl mx-auto bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-6 lg:p-8 mt-4 lg:mt-8">
               <h3 className="text-xl font-display font-bold mb-6">
                 הגדרות מערכת
@@ -363,6 +383,7 @@ export default function App() {
         {isChatOpen && <AIChat onClose={() => setIsChatOpen(false)} />}
       </AnimatePresence>
 
+      {/* טופס הוספת תזמון חדש */}
       <AnimatePresence>
         {isNewScheduleOpen && (
           <motion.div
@@ -375,7 +396,7 @@ export default function App() {
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 50, opacity: 0 }}
-              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="px-6 py-4 border-b border-[var(--color-punkt-border)] flex justify-between items-center bg-gradient-to-r from-[var(--color-punkt-surface)] to-[var(--color-punkt-bg)] flex-shrink-0">
                 <h3 className="font-display font-bold text-xl text-white">
@@ -392,7 +413,7 @@ export default function App() {
               <form
                 ref={formRef}
                 onSubmit={handleCreateSchedule}
-                className="flex-1 overflow-y-auto p-6 space-y-5"
+                className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"
               >
                 <div>
                   <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
@@ -412,7 +433,83 @@ export default function App() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* מתגי הגדרות בוט */}
+                <div className="bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] p-4 rounded-xl space-y-4">
+                  <h4 className="text-sm font-bold text-[var(--color-punkt-green)] border-b border-[var(--color-punkt-border)] pb-2 mb-3">
+                    הגדרות בוט מתקדמות
+                  </h4>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap size={16} className="text-yellow-400" />
+                      <span className="text-sm font-bold">
+                        שליחה מיידית (עוקף תור)
+                      </span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={sendNow}
+                        onChange={(e) => setSendNow(e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-[var(--color-punkt-surface-hover)] peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-punkt-green)]"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <LayoutDashboard size={16} className="text-blue-400" />
+                      <span className="text-sm font-bold">שליחה כסטטוס</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={isStatus}
+                        onChange={(e) => setIsStatus(e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-[var(--color-punkt-surface-hover)] peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-punkt-green)]"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <EyeOff size={16} className="text-gray-400" />
+                      <span className="text-sm font-bold">ללא חתימה בסוף</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={noSignature}
+                        onChange={(e) => setNoSignature(e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-[var(--color-punkt-surface-hover)] peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-punkt-green)]"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold mb-2 mt-2">
+                      <ClockIcon size={16} className="text-purple-400" />
+                      השהיה אחרי השליחה (זמן מסך)
+                    </label>
+                    <select
+                      value={pauseOption}
+                      onChange={(e) => setPauseOption(e.target.value)}
+                      className="w-full bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-lg py-2 px-3 text-white focus:outline-none focus:border-[var(--color-punkt-green)] appearance-none text-sm"
+                    >
+                      <option value="none">ללא השהיה</option>
+                      <option value="10 דקות">10 דקות</option>
+                      <option value="חצי שעה">חצי שעה</option>
+                      <option value="שעה">שעה</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div
+                  className={`grid grid-cols-2 gap-4 transition-opacity ${sendNow ? "opacity-30 pointer-events-none" : "opacity-100"}`}
+                >
                   <div>
                     <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
                       תאריך
@@ -420,10 +517,11 @@ export default function App() {
                     <input
                       name="date"
                       type="text"
-                      placeholder="DD/MM"
-                      required
+                      placeholder="DD.MM"
+                      required={!sendNow}
                       pattern="\d{1,2}[\/\.]\d{1,2}"
-                      className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-center"
+                      disabled={sendNow}
+                      className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-center disabled:bg-[var(--color-punkt-surface)]"
                       dir="ltr"
                     />
                   </div>
@@ -435,9 +533,10 @@ export default function App() {
                       name="time"
                       type="text"
                       placeholder="HH:MM"
-                      required
+                      required={!sendNow}
                       pattern="\d{1,2}:\d{2}"
-                      className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-center"
+                      disabled={sendNow}
+                      className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-center disabled:bg-[var(--color-punkt-surface)]"
                       dir="ltr"
                     />
                   </div>
@@ -445,19 +544,19 @@ export default function App() {
 
                 <div>
                   <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
-                    טקסט ההודעה (לא חובה)
+                    טקסט המודעה
                   </label>
                   <textarea
                     name="content"
                     rows={5}
-                    placeholder="הקלד את תוכן ההודעה כאן..."
+                    placeholder="הקלד את התוכן כאן..."
                     className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] resize-none"
                   ></textarea>
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
-                    קובץ מצורף (תמונה/וידאו - לא חובה)
+                    קובץ מצורף (תמונה/וידאו)
                   </label>
                   <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-[var(--color-punkt-border)] rounded-xl py-6 hover:border-[var(--color-punkt-green)] transition-colors cursor-pointer bg-[var(--color-punkt-bg)]">
                     <Paperclip
@@ -496,7 +595,8 @@ export default function App() {
                       </>
                     ) : (
                       <>
-                        <Send size={20} /> שלח לתזמון
+                        <Send size={20} />{" "}
+                        {sendNow ? "שלח עכשיו" : "שלח לתזמון"}
                       </>
                     )}
                   </button>

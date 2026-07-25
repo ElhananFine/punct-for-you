@@ -25,12 +25,14 @@ import {
   AlignLeft,
   Clock,
   X,
+  Globe,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion, AnimatePresence } from "motion/react";
 import { ScheduledMessage, GROUPS } from "../App";
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+// שעות התצוגה בגאנט (מ-06:00 עד 23:00)
+const DISPLAY_HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
 interface GanttChartProps {
   messages: ScheduledMessage[];
@@ -49,12 +51,23 @@ function hexToRgb(hex: string) {
     : "86, 192, 142";
 }
 
+function formatHour(h: number, is24h: boolean) {
+  if (is24h) return `${h.toString().padStart(2, "0")}:00`;
+  if (h === 12) return "12 PM";
+  if (h > 12) return `${h - 12} PM`;
+  if (h === 0) return "12 AM";
+  return `${h} AM`;
+}
+
 export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [selectedMessage, setSelectedMessage] =
     useState<ScheduledMessage | null>(null);
+
+  // מתג לתצוגת שעות
+  const [is24hFormat, setIs24hFormat] = useState(true);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -153,12 +166,19 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
         </div>
 
-        <div className="flex justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
+        <div className="flex justify-between md:justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
+          <button
+            onClick={() => setIs24hFormat(!is24hFormat)}
+            className="flex items-center gap-2 hover:text-white text-[var(--color-punkt-muted)] transition-colors border-l border-[var(--color-punkt-border)] pl-4"
+            title="החלף תצוגת שעות"
+          >
+            <Globe size={16} />
+            <span>{is24hFormat ? "24 שעות" : "12 שעות"}</span>
+          </button>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white neon-glow"></div>
             <span className="tracking-wide">נשלח</span>
           </div>
-          <div className="w-px h-3 md:h-4 bg-[var(--color-punkt-border)]"></div>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-gold)] shadow-[0_0_10px_rgba(253,185,19,0.5)]"></div>
             <span className="tracking-wide">מתוזמן</span>
@@ -167,7 +187,11 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
       </div>
 
       {viewMode === "day" && isMobile ? (
-        <MobileVerticalDayView messages={messages} date={startDate} />
+        <MobileVerticalDayView
+          messages={messages}
+          date={startDate}
+          is24hFormat={is24hFormat}
+        />
       ) : (
         <div className="flex-1 overflow-x-auto overflow-y-auto bg-[var(--color-punkt-bg)]">
           <div className="min-w-[800px] lg:min-w-[1200px] flex flex-col h-full w-full">
@@ -176,17 +200,16 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                 {viewMode === "day" ? "שעה" : "יום"}
               </div>
               <div className="flex-1 relative min-h-[40px] md:min-h-[50px] overflow-hidden">
-                {HOURS.map((hour) => (
+                {DISPLAY_HOURS.map((hour) => (
                   <div
                     key={hour}
                     className="absolute top-0 bottom-0 border-r border-[var(--color-punkt-border)]/30"
-                    style={{ right: `${(hour / 24) * 100}%` }}
+                    style={{ right: `${((hour - 6) / 18) * 100}%` }}
                   >
                     <span
                       className={`absolute top-1/2 -translate-y-1/2 right-1 md:right-2 text-[10px] md:text-xs text-[var(--color-punkt-muted)] font-mono font-bold ${hour % 2 !== 0 ? "hidden md:block" : ""}`}
                     >
-                      {hour.toString().padStart(2, "0")}
-                      <span className="hidden md:inline">:00</span>
+                      {formatHour(hour, is24hFormat)}
                     </span>
                   </div>
                 ))}
@@ -216,25 +239,26 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
 
                   <div className="flex-1 relative">
                     <div className="absolute inset-0 pointer-events-none">
-                      {HOURS.map((hour) => (
+                      {DISPLAY_HOURS.map((hour) => (
                         <div
                           key={hour}
                           className="absolute top-0 bottom-0 border-r border-[var(--color-punkt-border)]/15 border-dashed"
-                          style={{ right: `${(hour / 24) * 100}%` }}
+                          style={{ right: `${((hour - 6) / 18) * 100}%` }}
                         />
                       ))}
                     </div>
 
-                    {isSameDay(day, new Date()) && (
-                      <div
-                        className="absolute top-0 bottom-0 w-[2px] bg-[var(--color-punkt-green)] z-10 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
-                        style={{
-                          right: `${((getHours(new Date()) + getMinutes(new Date()) / 60) / 24) * 100}%`,
-                        }}
-                      >
-                        <div className="absolute -top-1 right-1/2 translate-x-1/2 w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
-                      </div>
-                    )}
+                    {isSameDay(day, new Date()) &&
+                      getHours(new Date()) >= 6 && (
+                        <div
+                          className="absolute top-0 bottom-0 w-[2px] bg-[var(--color-punkt-green)] z-10 shadow-[0_0_10px_rgba(86,192,142,0.8)]"
+                          style={{
+                            right: `${((getHours(new Date()) - 6 + getMinutes(new Date()) / 60) / 18) * 100}%`,
+                          }}
+                        >
+                          <div className="absolute -top-1 right-1/2 translate-x-1/2 w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)]"></div>
+                        </div>
+                      )}
 
                     <Tooltip.Provider delayDuration={0}>
                       {messages
@@ -246,15 +270,20 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                         .map((msg, idx) => {
                           const scheduledAtDate = parseISO(msg.scheduled_at);
                           const hour = getHours(scheduledAtDate);
+
+                          // אם ההודעה תוכננה לשעות הלילה, לא נציג אותה כדי לשמור על גאנט נקי
+                          // (או שאפשר להדביק לקצה הימני. כרגע נסתיר כמו שביקשת "פחות לתת לזה דגש")
+                          if (hour < 6) return null;
+
                           const minute = getMinutes(scheduledAtDate);
-                          const leftPercent = ((hour + minute / 60) / 24) * 100;
+                          const leftPercent =
+                            ((hour - 6 + minute / 60) / 18) * 100;
                           const isSent =
                             msg.status === "sent" ||
                             isBefore(scheduledAtDate, new Date());
 
                           const baseColor = getGroupColor(msg.group_id);
                           const rgbColor = hexToRgb(baseColor);
-
                           const bgStyle = isSent
                             ? {
                                 backgroundColor: baseColor,
@@ -379,10 +408,10 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl w-full max-w-sm glass-panel"
+              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl w-full max-w-sm glass-panel flex flex-col max-h-[85vh]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3">
+              <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
                 <div
                   className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg"
                   style={{ color: getGroupColor(selectedMessage.group_id) }}
@@ -397,26 +426,28 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                   <X size={20} />
                 </button>
               </div>
-              <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200 max-h-[40vh] overflow-y-auto">
-                {selectedMessage.content}
-              </div>
-              {selectedMessage.media_url && (
-                <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
-                  {selectedMessage.media_type === "video" ? (
-                    <video
-                      src={selectedMessage.media_url}
-                      controls
-                      className="w-full h-48 object-cover bg-black"
-                    />
-                  ) : (
-                    <img
-                      src={selectedMessage.media_url}
-                      alt="Media preview"
-                      className="w-full h-48 object-cover"
-                    />
-                  )}
+              <div className="flex-1 overflow-y-auto">
+                <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
+                  {selectedMessage.content}
                 </div>
-              )}
+                {selectedMessage.media_url && (
+                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
+                    {selectedMessage.media_type === "video" ? (
+                      <video
+                        src={selectedMessage.media_url}
+                        controls
+                        className="w-full h-48 object-cover bg-black"
+                      />
+                    ) : (
+                      <img
+                        src={selectedMessage.media_url}
+                        alt="Media preview"
+                        className="w-full h-48 object-cover"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -428,14 +459,16 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
 function MobileVerticalDayView({
   messages,
   date,
+  is24hFormat,
 }: {
   messages: ScheduledMessage[];
   date: Date;
+  is24hFormat: boolean;
 }) {
   return (
     <div className="flex-1 overflow-y-auto relative bg-[var(--color-punkt-bg)]">
       <div className="flex flex-col pb-20">
-        {HOURS.map((hour) => {
+        {DISPLAY_HOURS.map((hour) => {
           const hourMsgs = messages.filter((m) => {
             const d = parseISO(m.scheduled_at);
             return (
@@ -451,7 +484,7 @@ function MobileVerticalDayView({
               className="flex border-b border-[var(--color-punkt-border)] min-h-[70px]"
             >
               <div className="w-16 flex-shrink-0 border-l border-[var(--color-punkt-border)] py-3 px-1 flex flex-col items-center text-[11px] font-mono font-bold text-[var(--color-punkt-muted)] bg-[var(--color-punkt-surface)]/30">
-                <span>{hour.toString().padStart(2, "0")}:00</span>
+                <span>{formatHour(hour, is24hFormat)}</span>
                 {isSameDay(date, new Date()) &&
                   getHours(new Date()) === hour && (
                     <div className="w-2 h-2 rounded-full bg-[var(--color-punkt-green)] mt-2 shadow-[0_0_8px_rgba(86,192,142,0.8)]"></div>

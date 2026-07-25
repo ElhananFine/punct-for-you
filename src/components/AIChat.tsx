@@ -173,7 +173,7 @@ export function AIChat({ onClose }: { onClose: () => void }) {
             disabled={!input.trim() || isLoading}
             className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-[var(--color-punkt-green)] text-black rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
-            <Send size={18} className="rotate-180" />
+            <Send size={18} className="rotate-270" />
           </button>
         </form>
       </div>
