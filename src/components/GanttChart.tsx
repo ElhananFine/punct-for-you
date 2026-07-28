@@ -31,7 +31,6 @@ import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion, AnimatePresence } from "motion/react";
 import { ScheduledMessage, GROUPS } from "../App";
 
-// שעות התצוגה בגאנט (מ-06:00 עד 23:00)
 const DISPLAY_HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
 interface GanttChartProps {
@@ -66,7 +65,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [selectedMessage, setSelectedMessage] =
     useState<ScheduledMessage | null>(null);
 
-  // מתג לתצוגת שעות
   const [is24hFormat, setIs24hFormat] = useState(true);
 
   useEffect(() => {
@@ -173,7 +171,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
             title="החלף תצוגת שעות"
           >
             <Globe size={16} />
-            <span>{is24hFormat ? "24 שעות" : "12 שעות"}</span>
+            <span>{is24hFormat ? "24H" : "12H"}</span>
           </button>
           <div className="flex items-center gap-1.5 md:gap-2">
             <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white neon-glow"></div>
@@ -271,8 +269,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                           const scheduledAtDate = parseISO(msg.scheduled_at);
                           const hour = getHours(scheduledAtDate);
 
-                          // אם ההודעה תוכננה לשעות הלילה, לא נציג אותה כדי לשמור על גאנט נקי
-                          // (או שאפשר להדביק לקצה הימני. כרגע נסתיר כמו שביקשת "פחות לתת לזה דגש")
                           if (hour < 6) return null;
 
                           const minute = getMinutes(scheduledAtDate);
@@ -331,11 +327,12 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
-                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[260px] md:w-auto md:max-w-sm text-right glass-panel"
+                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[75vh]"
                                   sideOffset={10}
-                                  collisionPadding={10}
+                                  collisionPadding={15}
                                 >
-                                  <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3">
+                                  {/* כותרת החלונית (קבועה למעלה) */}
+                                  <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
                                     <div
                                       className="flex items-center gap-2 text-xs md:text-sm font-mono font-bold px-3 py-1 rounded-lg"
                                       style={{
@@ -359,26 +356,31 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                       }
                                     </span>
                                   </div>
-                                  <div className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
-                                    {msg.content}
-                                  </div>
-                                  {msg.media_url && (
-                                    <div className="mt-3 md:mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
-                                      {msg.media_type === "video" ? (
-                                        <video
-                                          src={msg.media_url}
-                                          controls
-                                          className="w-full h-32 md:h-48 object-cover bg-black"
-                                        />
-                                      ) : (
-                                        <img
-                                          src={msg.media_url}
-                                          alt="Media preview"
-                                          className="w-full h-32 md:h-40 object-cover"
-                                        />
-                                      )}
+
+                                  {/* גוף החלונית (נגלל!) */}
+                                  <div className="overflow-y-auto flex-1 pr-1">
+                                    <div className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
+                                      {msg.content}
                                     </div>
-                                  )}
+                                    {msg.media_url && (
+                                      <div className="mt-3 md:mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative flex-shrink-0">
+                                        {msg.media_type === "video" ? (
+                                          <video
+                                            src={msg.media_url}
+                                            controls
+                                            className="w-full h-32 md:h-48 object-cover bg-black"
+                                          />
+                                        ) : (
+                                          <img
+                                            src={msg.media_url}
+                                            alt="Media preview"
+                                            className="w-full h-32 md:h-40 object-cover"
+                                          />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+
                                   <Tooltip.Arrow className="fill-[var(--color-punkt-surface)]" />
                                 </Tooltip.Content>
                               </Tooltip.Portal>
@@ -426,12 +428,12 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                   <X size={20} />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto pr-1">
                 <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
                   {selectedMessage.content}
                 </div>
                 {selectedMessage.media_url && (
-                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative">
+                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative flex-shrink-0">
                     {selectedMessage.media_type === "video" ? (
                       <video
                         src={selectedMessage.media_url}
