@@ -328,6 +328,9 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                               <Tooltip.Portal>
                                 <Tooltip.Content
                                   className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[75vh]"
+                                  side="bottom"
+                                  align="center"
+                                  avoidCollisions={true}
                                   sideOffset={10}
                                   collisionPadding={15}
                                 >
@@ -358,7 +361,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                   </div>
 
                                   {/* גוף החלונית (נגלל!) */}
-                                  <div className="overflow-y-auto flex-1 pr-1">
+                                  <div className="overflow-y-auto flex-1 pr-1 custom-scrollbar">
                                     <div className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
                                       {msg.content}
                                     </div>
