@@ -327,12 +327,11 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
-                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[75vh]"
+                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[45vh] md:max-h-[350px]"
                                   side="bottom"
                                   align="center"
-                                  avoidCollisions={true}
+                                  avoidCollisions={false} // <--- זה מכריח את הטולטיפ להישאר תמיד למטה!
                                   sideOffset={10}
-                                  collisionPadding={15}
                                 >
                                   {/* כותרת החלונית (קבועה למעלה) */}
                                   <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
@@ -371,7 +370,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                           <video
                                             src={msg.media_url}
                                             controls
-                                            className="w-full h-32 md:h-48 object-cover bg-black"
+                                            className="w-full h-32 md:h-40 object-cover bg-black"
                                           />
                                         ) : (
                                           <img
