@@ -26,6 +26,7 @@ import {
   Clock,
   X,
   Globe,
+  CheckCircle2,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion, AnimatePresence } from "motion/react";
@@ -164,6 +165,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
         </div>
 
+        {/* מקרא צבעים מחודש */}
         <div className="flex justify-between md:justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
           <button
             onClick={() => setIs24hFormat(!is24hFormat)}
@@ -173,13 +175,15 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
             <Globe size={16} />
             <span>{is24hFormat ? "24H" : "12H"}</span>
           </button>
-          <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-white neon-glow"></div>
-            <span className="tracking-wide">נשלח</span>
+          <div className="flex items-center gap-1.5 md:gap-2 opacity-60">
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-400 bg-gray-500/20"></div>
+            <span className="tracking-wide text-[var(--color-punkt-muted)]">
+              נשלח (עבר)
+            </span>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2">
-            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-gold)] shadow-[0_0_10px_rgba(253,185,19,0.5)]"></div>
-            <span className="tracking-wide">מתוזמן</span>
+            <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)] shadow-[0_0_10px_rgba(86,192,142,0.5)]"></div>
+            <span className="tracking-wide">מתוזמן (עתידי)</span>
           </div>
         </div>
       </div>
@@ -269,28 +273,34 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                           const scheduledAtDate = parseISO(msg.scheduled_at);
                           const hour = getHours(scheduledAtDate);
 
+                          // לא מציג שעות לילה בגאנט
                           if (hour < 6) return null;
 
                           const minute = getMinutes(scheduledAtDate);
                           const leftPercent =
                             ((hour - 6 + minute / 60) / 18) * 100;
+
+                          // בדיקה האם ההודעה כבר נשלחה (או שהזמן שלה כבר עבר)
                           const isSent =
                             msg.status === "sent" ||
                             isBefore(scheduledAtDate, new Date());
 
                           const baseColor = getGroupColor(msg.group_id);
                           const rgbColor = hexToRgb(baseColor);
+
+                          // עיצוב שונה לנשלח (שקוף ורגוע) ולעתידי (בולט וזוהר)
                           const bgStyle = isSent
                             ? {
+                                backgroundColor: `rgba(${rgbColor},0.15)`,
+                                color: `rgba(${rgbColor},0.8)`,
+                                border: `1px solid rgba(${rgbColor},0.3)`,
+                                boxShadow: "none",
+                              }
+                            : {
                                 backgroundColor: baseColor,
                                 color: "#000",
                                 boxShadow: `0 0 15px rgba(${rgbColor},0.5)`,
-                              }
-                            : {
-                                backgroundColor: "var(--color-punkt-gold)",
-                                color: "#000",
-                                boxShadow: `0 0 15px rgba(253,185,19,0.5)`,
-                                border: `2px dashed ${baseColor}`,
+                                border: `1px solid rgba(255,255,255,0.4)`,
                               };
 
                           return (
@@ -306,7 +316,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     type: "spring",
                                     delay: dayIndex * 0.1 + idx * 0.05,
                                   }}
-                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-default hover:z-30 border-2 border-white/20"
+                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-default hover:z-30 border-2 border-white/20 transition-all"
                                   style={{
                                     right: `${leftPercent}%`,
                                     width: "40px",
@@ -314,6 +324,15 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     ...bgStyle,
                                   }}
                                 >
+                                  {/* אייקון וי קטן להודעות שנשלחו */}
+                                  {isSent && (
+                                    <div className="absolute -top-1.5 -right-1.5 bg-[var(--color-punkt-bg)] rounded-full z-10 p-0.5">
+                                      <CheckCircle2
+                                        size={12}
+                                        className="text-emerald-500"
+                                      />
+                                    </div>
+                                  )}
                                   {msg.media_type === "image" && (
                                     <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
                                   )}
@@ -327,13 +346,12 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
-                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[45vh] md:max-h-[350px]"
+                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[75vh] md:max-h-[450px]"
                                   side="bottom"
                                   align="center"
-                                  avoidCollisions={false} // <--- זה מכריח את הטולטיפ להישאר תמיד למטה!
+                                  avoidCollisions={false}
                                   sideOffset={10}
                                 >
-                                  {/* כותרת החלונית (קבועה למעלה) */}
                                   <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
                                     <div
                                       className="flex items-center gap-2 text-xs md:text-sm font-mono font-bold px-3 py-1 rounded-lg"
@@ -345,27 +363,45 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                       <Clock size={14} />
                                       {format(scheduledAtDate, "HH:mm")}
                                     </div>
-                                    <span
-                                      className="text-xs font-bold text-[var(--color-punkt-muted)] bg-[var(--color-punkt-bg)] px-2 py-1 rounded-md border"
-                                      style={{ borderColor: baseColor }}
-                                    >
-                                      {
-                                        GROUPS.find(
-                                          (g) =>
-                                            g.id ===
-                                            (msg.group_id || "punkt_foryou"),
-                                        )?.name
-                                      }
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={`text-[10px] md:text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}
+                                      >
+                                        {isSent ? (
+                                          <>
+                                            <CheckCircle2 size={12} /> נשלח
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Clock size={12} /> ממתין
+                                          </>
+                                        )}
+                                      </span>
+                                      <span
+                                        className="text-xs font-bold text-[var(--color-punkt-muted)] bg-[var(--color-punkt-bg)] px-2 py-1 rounded-md border"
+                                        style={{ borderColor: baseColor }}
+                                      >
+                                        {
+                                          GROUPS.find(
+                                            (g) =>
+                                              g.id ===
+                                              (msg.group_id || "punkt_foryou"),
+                                          )?.name
+                                        }
+                                      </span>
+                                    </div>
                                   </div>
 
-                                  {/* גוף החלונית (נגלל!) */}
                                   <div className="overflow-y-auto flex-1 pr-1 custom-scrollbar">
-                                    <div className="text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
+                                    <div
+                                      className={`text-xs md:text-sm whitespace-pre-wrap leading-relaxed font-medium ${isSent ? "text-gray-400" : "text-gray-200"}`}
+                                    >
                                       {msg.content}
                                     </div>
                                     {msg.media_url && (
-                                      <div className="mt-3 md:mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative flex-shrink-0">
+                                      <div
+                                        className={`mt-3 md:mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative flex-shrink-0 ${isSent ? "opacity-70" : ""}`}
+                                      >
                                         {msg.media_type === "video" ? (
                                           <video
                                             src={msg.media_url}
@@ -511,20 +547,24 @@ function MobileVerticalDayView({
                     return (
                       <div
                         key={msg.id}
-                        className={`p-3 rounded-xl border relative z-10 text-gray-200`}
+                        className={`p-3 rounded-xl border relative z-10 transition-all ${isSent ? "opacity-70 grayscale-[20%]" : ""}`}
                         style={{
                           borderColor: isSent
-                            ? `rgba(${rgbColor},0.3)`
-                            : "rgba(253,185,19,0.3)",
+                            ? `rgba(${rgbColor},0.2)`
+                            : `rgba(${rgbColor},0.5)`,
                           background: isSent
-                            ? `linear-gradient(to bottom right, rgba(${rgbColor},0.1), rgba(${rgbColor},0.02))`
-                            : "linear-gradient(to bottom right, rgba(253,185,19,0.1), rgba(253,185,19,0.02))",
+                            ? `rgba(${rgbColor},0.05)`
+                            : `linear-gradient(to bottom right, rgba(${rgbColor},0.15), rgba(${rgbColor},0.02))`,
                         }}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div
                             className="flex items-center gap-2"
-                            style={{ color: baseColor }}
+                            style={{
+                              color: isSent
+                                ? `rgba(${rgbColor},0.8)`
+                                : baseColor,
+                            }}
                           >
                             {msg.media_type === "image" && (
                               <ImageIcon size={14} />
@@ -533,12 +573,25 @@ function MobileVerticalDayView({
                             {msg.media_type === "text" && (
                               <AlignLeft size={14} />
                             )}
-                            <span className="text-[11px] font-mono font-bold text-[var(--color-punkt-muted)]">
+                            <span className="text-[11px] font-mono font-bold opacity-80 text-[var(--color-punkt-muted)]">
                               {format(scheduledAtDate, "HH:mm")}
                             </span>
                           </div>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}
+                          >
+                            {isSent ? (
+                              <>
+                                <CheckCircle2 size={10} /> נשלח
+                              </>
+                            ) : (
+                              "ממתין"
+                            )}
+                          </span>
                         </div>
-                        <p className="text-sm leading-relaxed line-clamp-3">
+                        <p
+                          className={`text-sm leading-relaxed line-clamp-3 ${isSent ? "text-gray-400" : "text-gray-100"}`}
+                        >
                           {msg.content}
                         </p>
                       </div>
