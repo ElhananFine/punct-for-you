@@ -16,6 +16,9 @@ import {
   Clock as ClockIcon,
   CheckCircle2,
   Clock,
+  Link2,
+  RefreshCw,
+  UploadCloud,
 } from "lucide-react";
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
@@ -50,7 +53,6 @@ export default function App() {
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // פילטרים
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "sent" | "scheduled"
@@ -60,10 +62,19 @@ export default function App() {
   const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // States for Bot Commands
   const [sendNow, setSendNow] = useState(false);
   const [isStatus, setIsStatus] = useState(false);
   const [noSignature, setNoSignature] = useState(false);
   const [pauseOption, setPauseOption] = useState("none");
+
+  // States for TikTok Integration
+  const [uploadMode, setUploadMode] = useState<"manual" | "tiktok">("manual");
+  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [isFetchingTiktok, setIsFetchingTiktok] = useState(false);
+  const [fetchedMediaUrl, setFetchedMediaUrl] = useState("");
+  const [originalTiktokDesc, setOriginalTiktokDesc] = useState("");
+  const [textContent, setTextContent] = useState("");
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -75,6 +86,21 @@ export default function App() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // ניקוי טופס בפתיחה
+  useEffect(() => {
+    if (isNewScheduleOpen) {
+      setUploadMode("manual");
+      setTiktokUrl("");
+      setFetchedMediaUrl("");
+      setOriginalTiktokDesc("");
+      setTextContent("");
+      setSendNow(false);
+      setIsStatus(false);
+      setNoSignature(false);
+      setPauseOption("none");
+    }
+  }, [isNewScheduleOpen]);
 
   const handleNavClick = (view: typeof activeView) => {
     setActiveView(view);
@@ -156,6 +182,56 @@ export default function App() {
     return filtered;
   }, [messages, selectedGroup, statusFilter, searchQuery]);
 
+  // פונקציית משיכה מטיקטוק
+  const handleFetchTiktok = async () => {
+    if (!tiktokUrl) return;
+    setIsFetchingTiktok(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-4lur.onrender.com/api/tiktok/fetch",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: tiktokUrl }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.error || "שגיאה במשיכת הנתונים מטיקטוק");
+
+      setTextContent(data.text);
+      setFetchedMediaUrl(data.mediaUrl);
+      setOriginalTiktokDesc(data.originalDesc);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setIsFetchingTiktok(false);
+    }
+  };
+
+  // פונקציית יצירת טקסט מחדש
+  const handleRegenerateTiktokText = async () => {
+    setIsFetchingTiktok(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-4lur.onrender.com/api/tiktok/regenerate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ desc: originalTiktokDesc }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setTextContent(data.text);
+    } catch (e: any) {
+      alert("שגיאה ביצירת טקסט חדש: " + e.message);
+    } finally {
+      setIsFetchingTiktok(false);
+    }
+  };
+
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -166,6 +242,12 @@ export default function App() {
       formData.append("isStatus", isStatus.toString());
       formData.append("noSignature", noSignature.toString());
       formData.append("pause", pauseOption);
+      formData.append("content", textContent); // מעדכנים את הטקסט מה-state
+
+      // הוספת הקישור מטיקטוק לטופס אם הוא קיים (במקום הקובץ הידני)
+      if (uploadMode === "tiktok" && fetchedMediaUrl) {
+        formData.append("mediaUrl", fetchedMediaUrl);
+      }
 
       const SUPABASE_FUNCTION_URL =
         "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule";
@@ -182,11 +264,6 @@ export default function App() {
       }
 
       setIsNewScheduleOpen(false);
-      setSendNow(false);
-      setIsStatus(false);
-      setNoSignature(false);
-      setPauseOption("none");
-
       setTimeout(() => fetchMessages(), 2000);
     } catch (error: any) {
       alert("קרתה תקלה בשליחה: " + error.message);
@@ -225,7 +302,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="font-display font-bold text-xl tracking-tight leading-none">
-                    PUNCT
+                    PUCKT
                   </h1>
                   <span className="text-xs text-[var(--color-punkt-green)] font-bold tracking-widest uppercase">
                     Media
@@ -334,7 +411,7 @@ export default function App() {
         {(activeView === "dashboard" || activeView === "gantt") && (
           <div className="flex flex-col h-full overflow-hidden">
             {activeView === "dashboard" && (
-              <div className="p-4 lg:p-6 grid grid-cols-2 gap-3 lg:gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30 flex-shrink-0">
+              <div className="p-4 lg:p-6 grid grid-cols-2 gap-3 lg:gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30 flex-shrink-0 z-10 relative">
                 <StatCard
                   title="נשלח השבוע"
                   value={isLoading ? "..." : stats.sentThisWeek.toString()}
@@ -348,7 +425,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="px-4 py-3 flex gap-3 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 items-center">
+            <div className="px-4 py-3 flex gap-3 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 z-10 relative items-center">
               <div className="flex bg-[var(--color-punkt-surface)] rounded-full p-1 border border-[var(--color-punkt-border)] flex-shrink-0">
                 <button
                   onClick={() => setStatusFilter("all")}
@@ -405,14 +482,14 @@ export default function App() {
               ))}
             </div>
 
-            <main className="flex-1 overflow-hidden bg-[var(--color-punkt-bg)] gantt-grid">
+            <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid z-0">
               <GanttChart messages={filteredMessages} isLoading={isLoading} />
             </main>
           </div>
         )}
 
         {activeView === "settings" && (
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)]">
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)] z-0 relative">
             <div className="max-w-2xl mx-auto bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-6 lg:p-8 mt-4 lg:mt-8">
               <h3 className="text-xl font-display font-bold mb-6">
                 הגדרות מערכת
@@ -469,6 +546,74 @@ export default function App() {
                 onSubmit={handleCreateSchedule}
                 className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"
               >
+                {/* טאבים לבחירת מקור המדיה */}
+                <div className="flex bg-[var(--color-punkt-bg)] p-1 rounded-xl mb-4 border border-[var(--color-punkt-border)]">
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode("manual")}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "manual" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <UploadCloud size={16} /> מהמחשב
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode("tiktok")}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "tiktok" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Link2 size={16} /> מטיקטוק (אוטומטי)
+                    </div>
+                  </button>
+                </div>
+
+                {uploadMode === "tiktok" && (
+                  <div className="space-y-4 bg-[var(--color-punkt-green)]/5 p-4 rounded-xl border border-[var(--color-punkt-green)]/20">
+                    <label className="block text-sm font-bold text-[var(--color-punkt-green)]">
+                      הדבק קישור טיקטוק:
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        value={tiktokUrl}
+                        onChange={(e) => setTiktokUrl(e.target.value)}
+                        placeholder="https://www.tiktok.com/..."
+                        className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-left"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleFetchTiktok}
+                        disabled={isFetchingTiktok || !tiktokUrl}
+                        className="bg-[var(--color-punkt-green)] text-black font-bold px-4 rounded-xl hover:opacity-90 disabled:opacity-50 min-w-[100px] flex items-center justify-center"
+                      >
+                        {isFetchingTiktok ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          "משוך תוכן"
+                        )}
+                      </button>
+                    </div>
+                    {fetchedMediaUrl && (
+                      <div className="relative mt-2 rounded-xl overflow-hidden border border-[var(--color-punkt-green)]/30 flex justify-center bg-black">
+                        {fetchedMediaUrl.endsWith("jpg") ? (
+                          <img
+                            src={fetchedMediaUrl}
+                            className="max-h-48 object-contain"
+                          />
+                        ) : (
+                          <video
+                            src={fetchedMediaUrl}
+                            controls
+                            className="max-h-48 w-full object-contain"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
                     לאיזו קבוצה?
@@ -596,49 +741,71 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
-                    טקסט המודעה
-                  </label>
+                  <div className="flex justify-between items-end mb-2">
+                    <label className="block text-sm font-bold text-[var(--color-punkt-muted)]">
+                      טקסט המודעה
+                    </label>
+                    {uploadMode === "tiktok" && originalTiktokDesc && (
+                      <button
+                        type="button"
+                        onClick={handleRegenerateTiktokText}
+                        disabled={isFetchingTiktok}
+                        className="text-[var(--color-punkt-green)] text-xs flex items-center gap-1 hover:underline"
+                      >
+                        <RefreshCw
+                          size={12}
+                          className={isFetchingTiktok ? "animate-spin" : ""}
+                        />
+                        נסח מחדש
+                      </button>
+                    )}
+                  </div>
                   <textarea
-                    name="content"
+                    value={textContent}
+                    onChange={(e) => setTextContent(e.target.value)}
                     rows={5}
                     placeholder="הקלד את התוכן כאן..."
                     className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] resize-none"
                   ></textarea>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
-                    קובץ מצורף (תמונה/וידאו)
-                  </label>
-                  <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-[var(--color-punkt-border)] rounded-xl py-6 hover:border-[var(--color-punkt-green)] transition-colors cursor-pointer bg-[var(--color-punkt-bg)]">
-                    <Paperclip
-                      size={20}
-                      className="text-[var(--color-punkt-muted)]"
-                    />
-                    <span className="text-[var(--color-punkt-muted)] text-sm font-bold">
-                      לחץ להעלאת קובץ
-                    </span>
-                    <input
-                      type="file"
-                      name="file"
-                      className="hidden"
-                      accept="image/*,video/*"
-                      onChange={(e) => {
-                        const fileName = e.target.files?.[0]?.name;
-                        if (fileName)
-                          e.target.parentElement!.querySelector(
-                            "span",
-                          )!.innerText = fileName;
-                      }}
-                    />
-                  </label>
-                </div>
+                {uploadMode === "manual" && (
+                  <div>
+                    <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
+                      קובץ מצורף (תמונה/וידאו)
+                    </label>
+                    <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-[var(--color-punkt-border)] rounded-xl py-6 hover:border-[var(--color-punkt-green)] transition-colors cursor-pointer bg-[var(--color-punkt-bg)]">
+                      <Paperclip
+                        size={20}
+                        className="text-[var(--color-punkt-muted)]"
+                      />
+                      <span className="text-[var(--color-punkt-muted)] text-sm font-bold">
+                        לחץ להעלאת קובץ
+                      </span>
+                      <input
+                        type="file"
+                        name="file"
+                        className="hidden"
+                        accept="image/*,video/*"
+                        onChange={(e) => {
+                          const fileName = e.target.files?.[0]?.name;
+                          if (fileName)
+                            e.target.parentElement!.querySelector(
+                              "span",
+                            )!.innerText = fileName;
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
 
                 <div className="pt-4 pb-2">
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={
+                      isSubmitting ||
+                      (uploadMode === "tiktok" && isFetchingTiktok)
+                    }
                     className="w-full bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-500 text-black font-bold py-3.5 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSubmitting ? (
