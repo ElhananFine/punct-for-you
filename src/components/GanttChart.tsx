@@ -59,6 +59,11 @@ function formatHour(h: number, is24h: boolean) {
   return `${h} AM`;
 }
 
+function formatMessageTime(dateStr: string, is24h: boolean) {
+  const d = parseISO(dateStr);
+  return format(d, is24h ? "HH:mm" : "hh:mm a");
+}
+
 export function GanttChart({ messages, isLoading }: GanttChartProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<"month" | "week" | "day">("week");
@@ -165,7 +170,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           </div>
         </div>
 
-        {/* מקרא צבעים מחודש */}
         <div className="flex justify-between md:justify-center items-center gap-4 text-xs md:text-sm font-bold bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] px-4 py-2 rounded-xl w-full md:w-auto">
           <button
             onClick={() => setIs24hFormat(!is24hFormat)}
@@ -188,11 +192,13 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       </div>
 
-      {viewMode === "day" && isMobile ? (
-        <MobileVerticalDayView
+      {/* תצוגת יום - עכשיו אנכית יפה גם במחשב! */}
+      {viewMode === "day" ? (
+        <VerticalDayView
           messages={messages}
           date={startDate}
           is24hFormat={is24hFormat}
+          onMessageClick={(msg) => setSelectedMessage(msg)}
         />
       ) : (
         <div className="flex-1 overflow-x-auto overflow-y-auto bg-[var(--color-punkt-bg)]">
@@ -273,22 +279,17 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                           const scheduledAtDate = parseISO(msg.scheduled_at);
                           const hour = getHours(scheduledAtDate);
 
-                          // לא מציג שעות לילה בגאנט
                           if (hour < 6) return null;
 
                           const minute = getMinutes(scheduledAtDate);
                           const leftPercent =
                             ((hour - 6 + minute / 60) / 18) * 100;
-
-                          // בדיקה האם ההודעה כבר נשלחה (או שהזמן שלה כבר עבר)
                           const isSent =
                             msg.status === "sent" ||
                             isBefore(scheduledAtDate, new Date());
 
                           const baseColor = getGroupColor(msg.group_id);
                           const rgbColor = hexToRgb(baseColor);
-
-                          // עיצוב שונה לנשלח (שקוף ורגוע) ולעתידי (בולט וזוהר)
                           const bgStyle = isSent
                             ? {
                                 backgroundColor: `rgba(${rgbColor},0.15)`,
@@ -307,16 +308,14 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                             <Tooltip.Root key={msg.id}>
                               <Tooltip.Trigger asChild>
                                 <motion.div
-                                  onClick={() =>
-                                    isMobile && setSelectedMessage(msg)
-                                  }
+                                  onClick={() => setSelectedMessage(msg)}
                                   initial={{ scale: 0 }}
                                   animate={{ scale: 1 }}
                                   transition={{
                                     type: "spring",
                                     delay: dayIndex * 0.1 + idx * 0.05,
                                   }}
-                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-default hover:z-30 border-2 border-white/20 transition-all"
+                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-pointer md:cursor-default hover:z-30 border-2 border-white/20 transition-all"
                                   style={{
                                     right: `${leftPercent}%`,
                                     width: "40px",
@@ -324,7 +323,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     ...bgStyle,
                                   }}
                                 >
-                                  {/* אייקון וי קטן להודעות שנשלחו */}
                                   {isSent && (
                                     <div className="absolute -top-1.5 -right-1.5 bg-[var(--color-punkt-bg)] rounded-full z-10 p-0.5">
                                       <CheckCircle2
@@ -361,7 +359,10 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                       }}
                                     >
                                       <Clock size={14} />
-                                      {format(scheduledAtDate, "HH:mm")}
+                                      {formatMessageTime(
+                                        msg.scheduled_at,
+                                        is24hFormat,
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span
@@ -434,9 +435,9 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       )}
 
-      {/* פופאפ מובייל */}
+      {/* פופאפ כשלוחצים על הודעה */}
       <AnimatePresence>
-        {selectedMessage && isMobile && (
+        {selectedMessage && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -448,7 +449,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl w-full max-w-sm glass-panel flex flex-col max-h-[85vh]"
+              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl w-full max-w-md glass-panel flex flex-col max-h-[85vh]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
@@ -457,7 +458,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                   style={{ color: getGroupColor(selectedMessage.group_id) }}
                 >
                   <Clock size={14} />
-                  {format(parseISO(selectedMessage.scheduled_at), "HH:mm")}
+                  {formatMessageTime(selectedMessage.scheduled_at, is24hFormat)}
                 </div>
                 <button
                   onClick={() => setSelectedMessage(null)}
@@ -466,7 +467,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                   <X size={20} />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto pr-1">
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                 <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
                   {selectedMessage.content}
                 </div>
@@ -476,13 +477,13 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                       <video
                         src={selectedMessage.media_url}
                         controls
-                        className="w-full h-48 object-cover bg-black"
+                        className="w-full h-auto object-cover bg-black max-h-64"
                       />
                     ) : (
                       <img
                         src={selectedMessage.media_url}
                         alt="Media preview"
-                        className="w-full h-48 object-cover"
+                        className="w-full h-auto object-cover max-h-64"
                       />
                     )}
                   </div>
@@ -496,18 +497,28 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
   );
 }
 
-function MobileVerticalDayView({
+// התצוגה האנכית החדשה! עובדת גם בנייד וגם במחשב (ממורכזת ויפה)
+function VerticalDayView({
   messages,
   date,
   is24hFormat,
+  onMessageClick,
 }: {
   messages: ScheduledMessage[];
   date: Date;
   is24hFormat: boolean;
+  onMessageClick: (msg: ScheduledMessage) => void;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto relative bg-[var(--color-punkt-bg)]">
-      <div className="flex flex-col pb-20">
+    <div className="flex-1 overflow-y-auto relative bg-[var(--color-punkt-bg)] p-2 md:p-6 flex justify-center custom-scrollbar">
+      <div className="w-full max-w-4xl flex flex-col pb-20 bg-[var(--color-punkt-surface)]/20 md:border border-[var(--color-punkt-border)] rounded-2xl overflow-hidden md:shadow-2xl h-fit">
+        {/* כותרת יום בולטת למחשב */}
+        <div className="hidden md:block bg-gradient-to-r from-[var(--color-punkt-surface)] to-[var(--color-punkt-bg)] p-6 text-center border-b border-[var(--color-punkt-border)] relative overflow-hidden">
+          <h2 className="text-2xl font-display font-bold text-white relative z-10">
+            {format(date, "EEEE, d בMMMM yyyy", { locale: he })}
+          </h2>
+        </div>
+
         {DISPLAY_HOURS.map((hour) => {
           const hourMsgs = messages.filter((m) => {
             const d = parseISO(m.scheduled_at);
@@ -521,19 +532,21 @@ function MobileVerticalDayView({
           return (
             <div
               key={hour}
-              className="flex border-b border-[var(--color-punkt-border)] min-h-[70px]"
+              className="flex border-b border-[var(--color-punkt-border)] min-h-[80px]"
             >
-              <div className="w-16 flex-shrink-0 border-l border-[var(--color-punkt-border)] py-3 px-1 flex flex-col items-center text-[11px] font-mono font-bold text-[var(--color-punkt-muted)] bg-[var(--color-punkt-surface)]/30">
-                <span>{formatHour(hour, is24hFormat)}</span>
+              <div className="w-16 md:w-24 flex-shrink-0 border-l border-[var(--color-punkt-border)] py-4 px-2 flex flex-col items-center text-[11px] md:text-sm font-mono font-bold text-[var(--color-punkt-muted)] bg-[var(--color-punkt-surface)]/40 relative">
+                <span className="sticky top-4">
+                  {formatHour(hour, is24hFormat)}
+                </span>
                 {isSameDay(date, new Date()) &&
                   getHours(new Date()) === hour && (
-                    <div className="w-2 h-2 rounded-full bg-[var(--color-punkt-green)] mt-2 shadow-[0_0_8px_rgba(86,192,142,0.8)]"></div>
+                    <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-[var(--color-punkt-green)] mt-2 shadow-[0_0_8px_rgba(86,192,142,0.8)] sticky top-10"></div>
                   )}
               </div>
 
-              <div className="flex-1 p-3 flex flex-col gap-3 relative">
+              <div className="flex-1 p-3 md:p-4 flex flex-col gap-3 relative">
                 {hourMsgs.length === 0 ? (
-                  <div className="absolute inset-0 border-b border-dashed border-[var(--color-punkt-border)]/20 pointer-events-none top-1/2"></div>
+                  <div className="absolute inset-0 border-b border-dashed border-[var(--color-punkt-border)]/10 pointer-events-none top-1/2"></div>
                 ) : (
                   hourMsgs.map((msg) => {
                     const scheduledAtDate = parseISO(msg.scheduled_at);
@@ -547,7 +560,8 @@ function MobileVerticalDayView({
                     return (
                       <div
                         key={msg.id}
-                        className={`p-3 rounded-xl border relative z-10 transition-all ${isSent ? "opacity-70 grayscale-[20%]" : ""}`}
+                        onClick={() => onMessageClick(msg)}
+                        className={`p-3 md:p-4 rounded-xl border relative z-10 transition-all cursor-pointer hover:-translate-y-0.5 hover:shadow-lg ${isSent ? "opacity-70 grayscale-[20%]" : ""}`}
                         style={{
                           borderColor: isSent
                             ? `rgba(${rgbColor},0.2)`
@@ -567,30 +581,40 @@ function MobileVerticalDayView({
                             }}
                           >
                             {msg.media_type === "image" && (
-                              <ImageIcon size={14} />
+                              <ImageIcon size={16} />
                             )}
-                            {msg.media_type === "video" && <Video size={14} />}
+                            {msg.media_type === "video" && <Video size={16} />}
                             {msg.media_type === "text" && (
-                              <AlignLeft size={14} />
+                              <AlignLeft size={16} />
                             )}
-                            <span className="text-[11px] font-mono font-bold opacity-80 text-[var(--color-punkt-muted)]">
-                              {format(scheduledAtDate, "HH:mm")}
+                            <span className="text-xs md:text-sm font-mono font-bold opacity-80 text-[var(--color-punkt-muted)]">
+                              {formatMessageTime(msg.scheduled_at, is24hFormat)}
                             </span>
                           </div>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}
-                          >
-                            {isSent ? (
-                              <>
-                                <CheckCircle2 size={10} /> נשלח
-                              </>
-                            ) : (
-                              "ממתין"
-                            )}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}
+                            >
+                              {isSent ? (
+                                <>
+                                  <CheckCircle2 size={10} /> נשלח
+                                </>
+                              ) : (
+                                "ממתין"
+                              )}
+                            </span>
+                            <span className="text-[10px] font-bold text-white/50 border border-white/10 px-2 py-0.5 rounded">
+                              {
+                                GROUPS.find(
+                                  (g) =>
+                                    g.id === (msg.group_id || "punkt_foryou"),
+                                )?.name
+                              }
+                            </span>
+                          </div>
                         </div>
                         <p
-                          className={`text-sm leading-relaxed line-clamp-3 ${isSent ? "text-gray-400" : "text-gray-100"}`}
+                          className={`text-sm md:text-base leading-relaxed line-clamp-3 md:line-clamp-2 ${isSent ? "text-gray-400" : "text-gray-100"}`}
                         >
                           {msg.content}
                         </p>
@@ -604,6 +628,5 @@ function MobileVerticalDayView({
         })}
       </div>
     </div>
-    // fix
   );
 }

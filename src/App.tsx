@@ -14,6 +14,7 @@ import {
   Zap,
   EyeOff,
   Clock as ClockIcon,
+  CheckCircle2,
 } from "lucide-react";
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
@@ -36,6 +37,7 @@ export const GROUPS = [
   { id: "punkt_foryou", name: "פונקט בשבילך", color: "#56c08e" },
   { id: "salon_nashi", name: "סלון נשי", color: "#ec4899" },
   { id: "mitbach_nashi", name: "מטבח נשי", color: "#f59e0b" },
+  { id: "gvarim_bamitbach", name: "גברים במטבח", color: "#ef4444" },
 ];
 
 export default function App() {
@@ -48,11 +50,11 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
+  const [showOnlySent, setShowOnlySent] = useState<boolean>(false);
 
   const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // States for Bot Commands
   const [sendNow, setSendNow] = useState(false);
   const [isStatus, setIsStatus] = useState(false);
   const [noSignature, setNoSignature] = useState(false);
@@ -77,7 +79,7 @@ export default function App() {
   const fetchMessages = async () => {
     try {
       const response = await fetch(
-        "https://three-of-day-4lur.onrender.com/api/schedules",
+        "https://three-of-day-4rqp.onrender.com/api/schedules",
       );
       const data = await response.json();
       setMessages(data || []);
@@ -119,11 +121,24 @@ export default function App() {
   }, [messages]);
 
   const filteredMessages = useMemo(() => {
-    if (selectedGroup === "all") return messages;
-    return messages.filter(
-      (msg) => (msg.group_id || "punkt_foryou") === selectedGroup,
-    );
-  }, [messages, selectedGroup]);
+    let filtered = messages;
+
+    if (selectedGroup !== "all") {
+      filtered = filtered.filter(
+        (msg) => (msg.group_id || "punkt_foryou") === selectedGroup,
+      );
+    }
+
+    if (showOnlySent) {
+      const now = new Date();
+      filtered = filtered.filter(
+        (msg) =>
+          msg.status === "sent" || isBefore(parseISO(msg.scheduled_at), now),
+      );
+    }
+
+    return filtered;
+  }, [messages, selectedGroup, showOnlySent]);
 
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -131,7 +146,6 @@ export default function App() {
     try {
       const formData = new FormData(e.currentTarget);
 
-      // הוספת פקודות הבוט ל-FormData
       formData.append("sendNow", sendNow.toString());
       formData.append("isStatus", isStatus.toString());
       formData.append("noSignature", noSignature.toString());
@@ -152,7 +166,6 @@ export default function App() {
       }
 
       setIsNewScheduleOpen(false);
-      // Reset form states
       setSendNow(false);
       setIsStatus(false);
       setNoSignature(false);
@@ -196,7 +209,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="font-display font-bold text-xl tracking-tight leading-none">
-                    PUNCT
+                    PUNKT
                   </h1>
                   <span className="text-xs text-[var(--color-punkt-green)] font-bold tracking-widest uppercase">
                     Media
@@ -248,7 +261,7 @@ export default function App() {
                 className="w-full py-3 px-4 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-400 text-[var(--color-punkt-bg)] rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity neon-glow"
               >
                 <MessageSquare size={18} />
-                <span>PUNCT AI</span>
+                <span>PUNKT AI</span>
               </button>
             </div>
           </motion.aside>
@@ -256,7 +269,6 @@ export default function App() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col min-w-0 relative w-full">
-        {/* Header - Fixed z-index to allow button clicks */}
         <header className="h-16 lg:h-20 border-b border-[var(--color-punkt-border)] glass-panel flex items-center justify-between px-4 lg:px-6 z-30 sticky top-0">
           <div className="flex items-center gap-3 lg:gap-4">
             {!isSidebarOpen && (
@@ -318,7 +330,17 @@ export default function App() {
               </div>
             )}
 
-            <div className="px-4 py-3 flex gap-2 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 z-10 relative">
+            <div className="px-4 py-3 flex gap-3 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 z-10 relative items-center">
+              <button
+                onClick={() => setShowOnlySent(!showOnlySent)}
+                className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-all border flex items-center gap-2 ${showOnlySent ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/50" : "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-muted)] border-[var(--color-punkt-border)] hover:text-white"}`}
+              >
+                <CheckCircle2 size={16} />
+                רק הודעות שנשלחו (עבר)
+              </button>
+
+              <div className="w-px h-6 bg-[var(--color-punkt-border)] mx-1"></div>
+
               <button
                 onClick={() => setSelectedGroup("all")}
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${selectedGroup === "all" ? "bg-white text-black" : "bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] text-[var(--color-punkt-muted)] hover:text-white"}`}
@@ -383,7 +405,6 @@ export default function App() {
         {isChatOpen && <AIChat onClose={() => setIsChatOpen(false)} />}
       </AnimatePresence>
 
-      {/* טופס הוספת תזמון חדש */}
       <AnimatePresence>
         {isNewScheduleOpen && (
           <motion.div
@@ -433,7 +454,6 @@ export default function App() {
                   </select>
                 </div>
 
-                {/* מתגי הגדרות בוט */}
                 <div className="bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] p-4 rounded-xl space-y-4">
                   <h4 className="text-sm font-bold text-[var(--color-punkt-green)] border-b border-[var(--color-punkt-border)] pb-2 mb-3">
                     הגדרות בוט מתקדמות
