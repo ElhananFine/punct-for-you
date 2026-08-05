@@ -318,7 +318,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     type: "spring",
                                     delay: dayIndex * 0.1 + idx * 0.05,
                                   }}
-                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-pointer hover:z-30 border-2 border-white/20 transition-all"
+                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-pointer md:cursor-default hover:z-30 border-2 border-white/20 transition-all"
                                   style={{
                                     right: `${leftPercent}%`,
                                     width: "40px",
@@ -347,11 +347,11 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                               </Tooltip.Trigger>
                               <Tooltip.Portal>
                                 <Tooltip.Content
-                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[75vh] md:max-h-[450px]"
-                                  side="bottom"
+                                  className="z-[60] bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-4 md:p-5 rounded-2xl shadow-2xl w-[280px] md:w-auto md:max-w-sm text-right glass-panel flex flex-col max-h-[60vh] md:max-h-[350px]"
+                                  side="top"
                                   align="center"
-                                  avoidCollisions={false}
-                                  sideOffset={10}
+                                  avoidCollisions={true}
+                                  sideOffset={15}
                                 >
                                   <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
                                     <div
@@ -438,7 +438,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       )}
 
-      {/* פופאפ מורחב של ההודעה (משתמש ב-Portal כדי להיות מעל הכל) */}
+      {/* פופאפ מורחב של ההודעה (משתמש ב-Portal כדי להיות מעל הכל במובייל/לחיצות יזומות) */}
       {createPortal(
         <AnimatePresence>
           {selectedMessage && (
