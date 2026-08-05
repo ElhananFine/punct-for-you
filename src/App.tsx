@@ -19,6 +19,7 @@ import {
   Link2,
   RefreshCw,
   UploadCloud,
+  CloudSun,
 } from "lucide-react";
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
@@ -62,16 +63,18 @@ export default function App() {
   const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // States for Bot Commands
   const [sendNow, setSendNow] = useState(false);
   const [isStatus, setIsStatus] = useState(false);
   const [noSignature, setNoSignature] = useState(false);
   const [pauseOption, setPauseOption] = useState("none");
 
-  // States for TikTok Integration
-  const [uploadMode, setUploadMode] = useState<"manual" | "tiktok">("manual");
+  // מצבי מקור התוכן: מחשב, טיקטוק, או מזג אוויר
+  const [uploadMode, setUploadMode] = useState<"manual" | "tiktok" | "weather">(
+    "manual",
+  );
   const [tiktokUrl, setTiktokUrl] = useState("");
   const [isFetchingTiktok, setIsFetchingTiktok] = useState(false);
+  const [isGeneratingWeather, setIsGeneratingWeather] = useState(false);
   const [fetchedMediaUrl, setFetchedMediaUrl] = useState("");
   const [originalTiktokDesc, setOriginalTiktokDesc] = useState("");
   const [textContent, setTextContent] = useState("");
@@ -87,7 +90,6 @@ export default function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ניקוי טופס בפתיחה
   useEffect(() => {
     if (isNewScheduleOpen) {
       setUploadMode("manual");
@@ -133,7 +135,6 @@ export default function App() {
     messages.forEach((msg) => {
       if (msg.status === "canceled") return;
       const msgDate = parseISO(msg.scheduled_at);
-
       if (
         isSameWeek(msgDate, now, { weekStartsOn: 0 }) &&
         (msg.status === "sent" || isBefore(msgDate, now))
@@ -153,13 +154,11 @@ export default function App() {
 
   const filteredMessages = useMemo(() => {
     let filtered = messages;
-
     if (selectedGroup !== "all") {
       filtered = filtered.filter(
         (msg) => (msg.group_id || "punkt_foryou") === selectedGroup,
       );
     }
-
     const now = new Date();
     if (statusFilter === "sent") {
       filtered = filtered.filter(
@@ -172,17 +171,14 @@ export default function App() {
           msg.status !== "sent" && !isBefore(parseISO(msg.scheduled_at), now),
       );
     }
-
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter((msg) =>
         msg.content.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
-
     return filtered;
   }, [messages, selectedGroup, statusFilter, searchQuery]);
 
-  // פונקציית משיכה מטיקטוק
   const handleFetchTiktok = async () => {
     if (!tiktokUrl) return;
     setIsFetchingTiktok(true);
@@ -198,7 +194,6 @@ export default function App() {
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.error || "שגיאה במשיכת הנתונים מטיקטוק");
-
       setTextContent(data.text);
       setFetchedMediaUrl(data.mediaUrl);
       setOriginalTiktokDesc(data.originalDesc);
@@ -209,7 +204,6 @@ export default function App() {
     }
   };
 
-  // פונקציית יצירת טקסט מחדש
   const handleRegenerateTiktokText = async () => {
     setIsFetchingTiktok(true);
     try {
@@ -223,12 +217,31 @@ export default function App() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       setTextContent(data.text);
     } catch (e: any) {
       alert("שגיאה ביצירת טקסט חדש: " + e.message);
     } finally {
       setIsFetchingTiktok(false);
+    }
+  };
+
+  const handleGenerateWeather = async () => {
+    setIsGeneratingWeather(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-4lur.onrender.com/api/weather/generate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTextContent(data.text);
+    } catch (e: any) {
+      alert("שגיאה ביצירת תחזית: " + e.message);
+    } finally {
+      setIsGeneratingWeather(false);
     }
   };
 
@@ -242,9 +255,8 @@ export default function App() {
       formData.append("isStatus", isStatus.toString());
       formData.append("noSignature", noSignature.toString());
       formData.append("pause", pauseOption);
-      formData.append("content", textContent); // מעדכנים את הטקסט מה-state
+      formData.append("content", textContent);
 
-      // הוספת הקישור מטיקטוק לטופס אם הוא קיים (במקום הקובץ הידני)
       if (uploadMode === "tiktok" && fetchedMediaUrl) {
         formData.append("mediaUrl", fetchedMediaUrl);
       }
@@ -302,7 +314,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="font-display font-bold text-xl tracking-tight leading-none">
-                    PUCKT
+                    PUNCT
                   </h1>
                   <span className="text-xs text-[var(--color-punkt-green)] font-bold tracking-widest uppercase">
                     Media
@@ -333,7 +345,6 @@ export default function App() {
                 active={activeView === "gantt"}
                 onClick={() => handleNavClick("gantt")}
               />
-
               <div className="text-xs font-bold text-[var(--color-punkt-muted)] mb-4 mt-8 px-4 uppercase tracking-widest">
                 מערכת
               </div>
@@ -448,9 +459,7 @@ export default function App() {
                   עתיד (מתוזמן)
                 </button>
               </div>
-
               <div className="w-px h-6 bg-[var(--color-punkt-border)] mx-1 flex-shrink-0"></div>
-
               <button
                 onClick={() => setSelectedGroup("all")}
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${selectedGroup === "all" ? "bg-white text-black" : "bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] text-[var(--color-punkt-muted)] hover:text-white"}`}
@@ -546,7 +555,6 @@ export default function App() {
                 onSubmit={handleCreateSchedule}
                 className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar"
               >
-                {/* טאבים לבחירת מקור המדיה */}
                 <div className="flex bg-[var(--color-punkt-bg)] p-1 rounded-xl mb-4 border border-[var(--color-punkt-border)]">
                   <button
                     type="button"
@@ -563,7 +571,16 @@ export default function App() {
                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "tiktok" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
                   >
                     <div className="flex items-center justify-center gap-2">
-                      <Link2 size={16} /> מטיקטוק (אוטומטי)
+                      <Link2 size={16} /> מטיקטוק
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode("weather")}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "weather" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <CloudSun size={16} /> מזג אוויר
                     </div>
                   </button>
                 </div>
@@ -611,6 +628,31 @@ export default function App() {
                         )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {uploadMode === "weather" && (
+                  <div className="space-y-4 bg-blue-500/5 p-4 rounded-xl border border-blue-500/20 flex flex-col items-center">
+                    <CloudSun size={32} className="text-blue-400 mb-2" />
+                    <p className="text-sm text-center text-blue-200">
+                      המערכת תמשוך נתונים עדכניים מ-OpenWeatherMap ל-24 השעות
+                      הקרובות (לפי 4 אזורים בארץ) ותנסח תחזית מסודרת.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleGenerateWeather}
+                      disabled={isGeneratingWeather}
+                      className="bg-blue-500 text-white font-bold py-2 px-6 rounded-xl hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isGeneratingWeather ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <CloudSun size={18} />
+                      )}
+                      {isGeneratingWeather
+                        ? "מייצר תחזית..."
+                        : "חולל תחזית למחר"}
+                    </button>
                   </div>
                 )}
 
@@ -755,7 +797,7 @@ export default function App() {
                         <RefreshCw
                           size={12}
                           className={isFetchingTiktok ? "animate-spin" : ""}
-                        />
+                        />{" "}
                         נסח מחדש
                       </button>
                     )}
@@ -763,7 +805,7 @@ export default function App() {
                   <textarea
                     value={textContent}
                     onChange={(e) => setTextContent(e.target.value)}
-                    rows={5}
+                    rows={7}
                     placeholder="הקלד את התוכן כאן..."
                     className="w-full bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] resize-none"
                   ></textarea>
@@ -772,7 +814,7 @@ export default function App() {
                 {uploadMode === "manual" && (
                   <div>
                     <label className="block text-sm font-bold text-[var(--color-punkt-muted)] mb-2">
-                      קובץ מצורף (תמונה/וידאו)
+                      קובץ מצורף (תמונה/וידאו - לא חובה)
                     </label>
                     <label className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-[var(--color-punkt-border)] rounded-xl py-6 hover:border-[var(--color-punkt-green)] transition-colors cursor-pointer bg-[var(--color-punkt-bg)]">
                       <Paperclip
@@ -804,7 +846,8 @@ export default function App() {
                     type="submit"
                     disabled={
                       isSubmitting ||
-                      (uploadMode === "tiktok" && isFetchingTiktok)
+                      (uploadMode === "tiktok" && isFetchingTiktok) ||
+                      (uploadMode === "weather" && isGeneratingWeather)
                     }
                     className="w-full bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-500 text-black font-bold py-3.5 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
                   >
