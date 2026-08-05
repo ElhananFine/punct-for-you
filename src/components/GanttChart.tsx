@@ -96,6 +96,9 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
     return [startDate];
   }, [startDate, viewMode]);
 
+  // מכיוון שאנחנו ב-RTL (עברית):
+  // לחיצה ימינה מראה את מה ש*היה קודם* (Prev)
+  // לחיצה שמאלה מראה את מה ש*יהיה אחר כך* (Next)
   const handlePrev = () => {
     setCurrentDate((prev) => {
       if (viewMode === "month") return subMonths(prev, 1);
@@ -149,7 +152,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
 
           <div className="flex items-center justify-between bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-xl p-1 w-full sm:w-auto">
             <button
-              onClick={handleNext}
+              onClick={handlePrev}
               className="p-1.5 md:p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]"
             >
               <ChevronRight size={18} />
@@ -162,7 +165,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                   : format(startDate, "EEEE, d בMMMM yyyy", { locale: he })}
             </h3>
             <button
-              onClick={handlePrev}
+              onClick={handleNext}
               className="p-1.5 md:p-2 rounded-lg hover:bg-[var(--color-punkt-surface-hover)] transition-colors hover:text-[var(--color-punkt-green)]"
             >
               <ChevronLeft size={18} />
@@ -192,7 +195,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       </div>
 
-      {/* תצוגת יום - עכשיו אנכית יפה גם במחשב! */}
+      {/* תצוגת יום - אנכית מיוחדת למחשב ונייד */}
       {viewMode === "day" ? (
         <VerticalDayView
           messages={messages}
@@ -318,7 +321,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     type: "spring",
                                     delay: dayIndex * 0.1 + idx * 0.05,
                                   }}
-                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-pointer md:cursor-default hover:z-30 border-2 border-white/20 transition-all"
+                                  className="absolute top-1/2 -translate-y-1/2 h-10 md:h-14 rounded-[10px] md:rounded-xl flex items-center justify-center cursor-pointer hover:z-30 border-2 border-white/20 transition-all"
                                   style={{
                                     right: `${leftPercent}%`,
                                     width: "40px",
@@ -438,7 +441,7 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       )}
 
-      {/* פופאפ כשלוחצים על הודעה */}
+      {/* פופאפ מורחב של ההודעה (מתאים למובייל, אבל יכול לשמש גם בדסקטופ אם תרצה) */}
       <AnimatePresence>
         {selectedMessage && (
           <motion.div
@@ -457,8 +460,11 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
             >
               <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
                 <div
-                  className="flex items-center gap-2 text-sm text-[var(--color-punkt-green)] font-mono font-bold bg-[var(--color-punkt-green)]/10 px-3 py-1 rounded-lg"
-                  style={{ color: getGroupColor(selectedMessage.group_id) }}
+                  className="flex items-center gap-2 text-sm font-mono font-bold px-3 py-1 rounded-lg"
+                  style={{
+                    color: getGroupColor(selectedMessage.group_id),
+                    backgroundColor: `rgba(${hexToRgb(getGroupColor(selectedMessage.group_id))},0.1)`,
+                  }}
                 >
                   <Clock size={14} />
                   {formatMessageTime(selectedMessage.scheduled_at, is24hFormat)}

@@ -15,6 +15,7 @@ import {
   EyeOff,
   Clock as ClockIcon,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
@@ -49,8 +50,12 @@ export default function App() {
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // פילטרים
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
-  const [showOnlySent, setShowOnlySent] = useState<boolean>(false);
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "sent" | "scheduled"
+  >("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isNewScheduleOpen, setIsNewScheduleOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +83,7 @@ export default function App() {
 
   const fetchMessages = async () => {
     try {
+      // הכתובת החדשה והמעודכנת
       const response = await fetch(
         "https://three-of-day-4lur.onrender.com/api/schedules",
       );
@@ -120,25 +126,40 @@ export default function App() {
     return { sentThisWeek, scheduledToday };
   }, [messages]);
 
+  // סינון חכם שכולל גם קבוצות, גם סטטוס עבר/עתיד וגם חיפוש טקסט
   const filteredMessages = useMemo(() => {
     let filtered = messages;
 
+    // סינון קבוצה
     if (selectedGroup !== "all") {
       filtered = filtered.filter(
         (msg) => (msg.group_id || "punkt_foryou") === selectedGroup,
       );
     }
 
-    if (showOnlySent) {
-      const now = new Date();
+    // סינון עבר / עתיד
+    const now = new Date();
+    if (statusFilter === "sent") {
       filtered = filtered.filter(
         (msg) =>
           msg.status === "sent" || isBefore(parseISO(msg.scheduled_at), now),
       );
+    } else if (statusFilter === "scheduled") {
+      filtered = filtered.filter(
+        (msg) =>
+          msg.status !== "sent" && !isBefore(parseISO(msg.scheduled_at), now),
+      );
+    }
+
+    // חיפוש טקסט
+    if (searchQuery.trim() !== "") {
+      filtered = filtered.filter((msg) =>
+        msg.content.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
     }
 
     return filtered;
-  }, [messages, selectedGroup, showOnlySent]);
+  }, [messages, selectedGroup, statusFilter, searchQuery]);
 
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -209,7 +230,7 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="font-display font-bold text-xl tracking-tight leading-none">
-                    PUNKT
+                    PUNCT
                   </h1>
                   <span className="text-xs text-[var(--color-punkt-green)] font-bold tracking-widest uppercase">
                     Media
@@ -261,7 +282,7 @@ export default function App() {
                 className="w-full py-3 px-4 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-400 text-[var(--color-punkt-bg)] rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity neon-glow"
               >
                 <MessageSquare size={18} />
-                <span>PUNKT AI</span>
+                <span>PUNCT AI</span>
               </button>
             </div>
           </motion.aside>
@@ -297,6 +318,8 @@ export default function App() {
               <input
                 type="text"
                 placeholder="חיפוש קמפיין..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-full py-2 pr-10 pl-4 text-sm focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors w-64"
               />
             </div>
@@ -331,21 +354,37 @@ export default function App() {
             )}
 
             <div className="px-4 py-3 flex gap-3 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 z-10 relative items-center">
-              <button
-                onClick={() => setShowOnlySent(!showOnlySent)}
-                className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-all border flex items-center gap-2 ${showOnlySent ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/50" : "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-muted)] border-[var(--color-punkt-border)] hover:text-white"}`}
-              >
-                <CheckCircle2 size={16} />
-                רק הודעות שנשלחו (עבר)
-              </button>
+              {/* סרגל מצב עבר / עתיד */}
+              <div className="flex bg-[var(--color-punkt-surface)] rounded-full p-1 border border-[var(--color-punkt-border)] flex-shrink-0">
+                <button
+                  onClick={() => setStatusFilter("all")}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${statusFilter === "all" ? "bg-white text-black" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
+                >
+                  הכל
+                </button>
+                <button
+                  onClick={() => setStatusFilter("sent")}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${statusFilter === "sent" ? "bg-emerald-500/20 text-emerald-400" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
+                >
+                  <CheckCircle2 size={12} />
+                  עבר (נשלח)
+                </button>
+                <button
+                  onClick={() => setStatusFilter("scheduled")}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-colors ${statusFilter === "scheduled" ? "bg-amber-500/20 text-amber-400" : "text-[var(--color-punkt-muted)] hover:text-white"}`}
+                >
+                  <Clock size={12} />
+                  עתיד (מתוזמן)
+                </button>
+              </div>
 
-              <div className="w-px h-6 bg-[var(--color-punkt-border)] mx-1"></div>
+              <div className="w-px h-6 bg-[var(--color-punkt-border)] mx-1 flex-shrink-0"></div>
 
               <button
                 onClick={() => setSelectedGroup("all")}
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-bold transition-colors ${selectedGroup === "all" ? "bg-white text-black" : "bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] text-[var(--color-punkt-muted)] hover:text-white"}`}
               >
-                הכל
+                כל הקבוצות
               </button>
               {GROUPS.map((g) => (
                 <button
