@@ -83,7 +83,6 @@ export default function App() {
 
   const fetchMessages = async () => {
     try {
-      // הכתובת החדשה והמעודכנת
       const response = await fetch(
         "https://three-of-day-4lur.onrender.com/api/schedules",
       );
@@ -126,18 +125,15 @@ export default function App() {
     return { sentThisWeek, scheduledToday };
   }, [messages]);
 
-  // סינון חכם שכולל גם קבוצות, גם סטטוס עבר/עתיד וגם חיפוש טקסט
   const filteredMessages = useMemo(() => {
     let filtered = messages;
 
-    // סינון קבוצה
     if (selectedGroup !== "all") {
       filtered = filtered.filter(
         (msg) => (msg.group_id || "punkt_foryou") === selectedGroup,
       );
     }
 
-    // סינון עבר / עתיד
     const now = new Date();
     if (statusFilter === "sent") {
       filtered = filtered.filter(
@@ -151,7 +147,6 @@ export default function App() {
       );
     }
 
-    // חיפוש טקסט
     if (searchQuery.trim() !== "") {
       filtered = filtered.filter((msg) =>
         msg.content.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -339,7 +334,7 @@ export default function App() {
         {(activeView === "dashboard" || activeView === "gantt") && (
           <div className="flex flex-col h-full overflow-hidden">
             {activeView === "dashboard" && (
-              <div className="p-4 lg:p-6 grid grid-cols-2 gap-3 lg:gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30 flex-shrink-0 z-10 relative">
+              <div className="p-4 lg:p-6 grid grid-cols-2 gap-3 lg:gap-6 border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-surface)]/30 flex-shrink-0">
                 <StatCard
                   title="נשלח השבוע"
                   value={isLoading ? "..." : stats.sentThisWeek.toString()}
@@ -353,8 +348,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="px-4 py-3 flex gap-3 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 z-10 relative items-center">
-              {/* סרגל מצב עבר / עתיד */}
+            <div className="px-4 py-3 flex gap-3 overflow-x-auto border-b border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hide-scrollbar flex-shrink-0 items-center">
               <div className="flex bg-[var(--color-punkt-surface)] rounded-full p-1 border border-[var(--color-punkt-border)] flex-shrink-0">
                 <button
                   onClick={() => setStatusFilter("all")}
@@ -411,14 +405,14 @@ export default function App() {
               ))}
             </div>
 
-            <main className="flex-1 overflow-hidden relative bg-[var(--color-punkt-bg)] gantt-grid z-0">
+            <main className="flex-1 overflow-hidden bg-[var(--color-punkt-bg)] gantt-grid">
               <GanttChart messages={filteredMessages} isLoading={isLoading} />
             </main>
           </div>
         )}
 
         {activeView === "settings" && (
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)] z-0 relative">
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)]">
             <div className="max-w-2xl mx-auto bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-6 lg:p-8 mt-4 lg:mt-8">
               <h3 className="text-xl font-display font-bold mb-6">
                 הגדרות מערכת

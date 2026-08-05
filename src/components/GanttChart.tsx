@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   format,
   addDays,
@@ -96,9 +97,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
     return [startDate];
   }, [startDate, viewMode]);
 
-  // מכיוון שאנחנו ב-RTL (עברית):
-  // לחיצה ימינה מראה את מה ש*היה קודם* (Prev)
-  // לחיצה שמאלה מראה את מה ש*יהיה אחר כך* (Next)
   const handlePrev = () => {
     setCurrentDate((prev) => {
       if (viewMode === "month") return subMonths(prev, 1);
@@ -195,7 +193,6 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       </div>
 
-      {/* תצוגת יום - אנכית מיוחדת למחשב ונייד */}
       {viewMode === "day" ? (
         <VerticalDayView
           messages={messages}
@@ -441,72 +438,78 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
         </div>
       )}
 
-      {/* פופאפ מורחב של ההודעה (מתאים למובייל, אבל יכול לשמש גם בדסקטופ אם תרצה) */}
-      <AnimatePresence>
-        {selectedMessage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSelectedMessage(null)}
-          >
+      {/* פופאפ מורחב של ההודעה (משתמש ב-Portal כדי להיות מעל הכל) */}
+      {createPortal(
+        <AnimatePresence>
+          {selectedMessage && (
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 rounded-2xl shadow-2xl w-full max-w-md glass-panel flex flex-col max-h-[85vh]"
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm"
+              onClick={() => setSelectedMessage(null)}
             >
-              <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-3 flex-shrink-0">
-                <div
-                  className="flex items-center gap-2 text-sm font-mono font-bold px-3 py-1 rounded-lg"
-                  style={{
-                    color: getGroupColor(selectedMessage.group_id),
-                    backgroundColor: `rgba(${hexToRgb(getGroupColor(selectedMessage.group_id))},0.1)`,
-                  }}
-                >
-                  <Clock size={14} />
-                  {formatMessageTime(selectedMessage.scheduled_at, is24hFormat)}
-                </div>
-                <button
-                  onClick={() => setSelectedMessage(null)}
-                  className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                <div className="text-sm whitespace-pre-wrap leading-relaxed font-medium text-gray-200">
-                  {selectedMessage.content}
-                </div>
-                {selectedMessage.media_url && (
-                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative flex-shrink-0">
-                    {selectedMessage.media_type === "video" ? (
-                      <video
-                        src={selectedMessage.media_url}
-                        controls
-                        className="w-full h-auto object-cover bg-black max-h-64"
-                      />
-                    ) : (
-                      <img
-                        src={selectedMessage.media_url}
-                        alt="Media preview"
-                        className="w-full h-auto object-cover max-h-64"
-                      />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-2xl w-full max-w-lg glass-panel flex flex-col max-h-[85vh] overflow-hidden relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4 border-b border-[var(--color-punkt-border)] pb-4 flex-shrink-0">
+                  <div
+                    className="flex items-center gap-2 text-sm font-mono font-bold px-3 py-1.5 rounded-lg"
+                    style={{
+                      color: getGroupColor(selectedMessage.group_id),
+                      backgroundColor: `rgba(${hexToRgb(getGroupColor(selectedMessage.group_id))},0.1)`,
+                    }}
+                  >
+                    <Clock size={16} />
+                    {formatMessageTime(
+                      selectedMessage.scheduled_at,
+                      is24hFormat,
                     )}
                   </div>
-                )}
-              </div>
+                  <button
+                    onClick={() => setSelectedMessage(null)}
+                    className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-xl hover:bg-white/5 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 pb-2">
+                  <div className="text-sm md:text-base whitespace-pre-wrap leading-relaxed font-medium text-gray-200 break-words">
+                    {selectedMessage.content}
+                  </div>
+                  {selectedMessage.media_url && (
+                    <div className="mt-5 rounded-xl overflow-hidden border border-[var(--color-punkt-border)] relative flex-shrink-0">
+                      {selectedMessage.media_type === "video" ? (
+                        <video
+                          src={selectedMessage.media_url}
+                          controls
+                          className="w-full h-auto object-contain bg-black max-h-[50vh]"
+                        />
+                      ) : (
+                        <img
+                          src={selectedMessage.media_url}
+                          alt="Media preview"
+                          className="w-full h-auto object-contain bg-black max-h-[50vh]"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }
 
-// התצוגה האנכית החדשה! עובדת גם בנייד וגם במחשב (ממורכזת ויפה)
 function VerticalDayView({
   messages,
   date,
@@ -521,7 +524,6 @@ function VerticalDayView({
   return (
     <div className="flex-1 overflow-y-auto relative bg-[var(--color-punkt-bg)] p-2 md:p-6 flex justify-center custom-scrollbar">
       <div className="w-full max-w-4xl flex flex-col pb-20 bg-[var(--color-punkt-surface)]/20 md:border border-[var(--color-punkt-border)] rounded-2xl overflow-hidden md:shadow-2xl h-fit">
-        {/* כותרת יום בולטת למחשב */}
         <div className="hidden md:block bg-gradient-to-r from-[var(--color-punkt-surface)] to-[var(--color-punkt-bg)] p-6 text-center border-b border-[var(--color-punkt-border)] relative overflow-hidden">
           <h2 className="text-2xl font-display font-bold text-white relative z-10">
             {format(date, "EEEE, d בMMMM yyyy", { locale: he })}
