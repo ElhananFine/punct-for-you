@@ -247,10 +247,20 @@ export default function App() {
 
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const formData = new FormData(e.currentTarget);
+    const selectedGroupId = formData.get("groupId") as string;
+
+    // הגנת מכסת API (Green API Free Tier Limit)
+    if (selectedGroupId === "all" && GROUPS.length > 3) {
+      alert(
+        "שגיאה: חשבון Green API החינמי שלך מוגבל למשלוח ל-3 קבוצות בלבד בחודש.\nלא ניתן לבחור 'כל הקבוצות' כשיש יותר מ-3 נמענים, אחרת תחסם.\nיש לשדרג למסלול Business ב-Green API.",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const formData = new FormData(e.currentTarget);
-
       formData.append("sendNow", sendNow.toString());
       formData.append("isStatus", isStatus.toString());
       formData.append("noSignature", noSignature.toString());
@@ -271,7 +281,7 @@ export default function App() {
 
       if (!response.ok) {
         throw new Error(
-          "שגיאה בשליחת התזמון. ודא שהפונקציה בסופאבייס עובדת תקין.",
+          "שגיאה בשליחת התזמון. ודא שהפונקציה בסופאבייס עובדת תקין (ושה-API אינו חסום).",
         );
       }
 
