@@ -79,7 +79,7 @@ export default function App() {
   const fetchMessages = async () => {
     try {
       const response = await fetch(
-        "https://three-of-day-4rqp.onrender.com/api/schedules",
+        "https://three-of-day-4lur.onrender.com/api/schedules",
       );
       const data = await response.json();
       setMessages(data || []);

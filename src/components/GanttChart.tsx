@@ -205,7 +205,10 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
           <div className="min-w-[800px] lg:min-w-[1200px] flex flex-col h-full w-full">
             <div className="flex sticky top-0 z-30 bg-[var(--color-punkt-bg)]/95 backdrop-blur-md shadow-sm border-b border-[var(--color-punkt-border)]">
               <div className="w-20 md:w-32 flex-shrink-0 sticky right-0 z-40 bg-[var(--color-punkt-bg)] border-l border-[var(--color-punkt-border)] p-2 md:p-4 flex items-center justify-center font-display font-bold text-xs md:text-sm text-[var(--color-punkt-muted)] tracking-widest uppercase shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.5)]">
-                {viewMode === "day" ? "שעה" : "יום"}
+                {
+                  // @ts-ignore
+                  viewMode === "day" ? "שעה" : "יום"
+                }
               </div>
               <div className="flex-1 relative min-h-[40px] md:min-h-[50px] overflow-hidden">
                 {DISPLAY_HOURS.map((hour) => (
