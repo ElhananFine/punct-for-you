@@ -112,7 +112,7 @@ export default function App() {
   const fetchMessages = async () => {
     try {
       const response = await fetch(
-        "https://three-of-day-4lur.onrender.com/api/schedules",
+        "https://three-of-day-bp4b.onrender.com/api/schedules",
       );
       const data = await response.json();
       setMessages(data || []);
@@ -184,7 +184,7 @@ export default function App() {
     setIsFetchingTiktok(true);
     try {
       const res = await fetch(
-        "https://three-of-day-4lur.onrender.com/api/tiktok/fetch",
+        "https://three-of-day-bp4b.onrender.com/api/tiktok/fetch",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -208,7 +208,7 @@ export default function App() {
     setIsFetchingTiktok(true);
     try {
       const res = await fetch(
-        "https://three-of-day-4lur.onrender.com/api/tiktok/regenerate",
+        "https://three-of-day-bp4b.onrender.com/api/tiktok/regenerate",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -229,7 +229,7 @@ export default function App() {
     setIsGeneratingWeather(true);
     try {
       const res = await fetch(
-        "https://three-of-day-4lur.onrender.com/api/weather/generate",
+        "https://three-of-day-bp4b.onrender.com/api/weather/generate",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
