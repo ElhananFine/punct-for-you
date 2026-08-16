@@ -18,6 +18,7 @@ import { AIChat } from "./components/AIChat";
 import { GanttChart } from "./components/GanttChart";
 import { TikTokPoolView } from "./components/views/TikTokPoolView";
 import { NewScheduleModal } from "./components/modals/NewScheduleModal";
+import { BotCommandsView } from "./components/views/BotCommandsView";
 
 // ==========================================
 // Main App Component
@@ -26,9 +27,8 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeView, setActiveView] = useState<
-    "dashboard" | "gantt" | "tiktok-pool" | "settings"
+    "dashboard" | "gantt" | "tiktok-pool" | "commands" | "settings"
   >("dashboard");
-
   // Data
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,6 +142,8 @@ export default function App() {
         {activeView === "tiktok-pool" && (
           <TikTokPoolView onScheduleLink={openNewScheduleWithLink} />
         )}
+
+        {activeView === "commands" && <BotCommandsView />}
 
         {activeView === "settings" && (
           <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)]">

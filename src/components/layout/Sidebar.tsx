@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Inbox,
   X,
+  Terminal,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -95,6 +96,12 @@ export function Sidebar({
                 label="מאגר טיקטוק"
                 active={activeView === "tiktok-pool"}
                 onClick={() => handleNavClick("tiktok-pool")}
+              />
+              <NavItem
+                icon={<Terminal size={20} />}
+                label="מרכז הפקודות"
+                active={activeView === "commands"}
+                onClick={() => handleNavClick("commands")}
               />
 
               <div className="text-xs font-bold text-[var(--color-punkt-muted)] mb-4 mt-8 px-4 uppercase tracking-widest">
