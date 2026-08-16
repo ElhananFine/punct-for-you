@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   Loader2,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 
 interface TikTokPoolViewProps {
@@ -18,6 +19,11 @@ interface TikTokPoolViewProps {
 export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
   const [links, setLinks] = useState<TikTokPoolLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // States for adding a new link manually
+  const [newUrl, setNewUrl] = useState("");
+  const [newNotes, setNewNotes] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
 
   const fetchLinks = async () => {
     setIsLoading(true);
@@ -37,6 +43,34 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
   useEffect(() => {
     fetchLinks();
   }, []);
+
+  const handleAddLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUrl) return;
+    setIsAdding(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/tiktok/pool/add",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: newUrl, notes: newNotes }),
+        },
+      );
+      const data = await res.json();
+      if (data.status === "duplicate") {
+        alert(data.message); // התראת כפילות שמוחזרת מהשרת
+      } else {
+        setNewUrl("");
+        setNewNotes("");
+        fetchLinks(); // רענון הרשימה לאחר הוספה
+      }
+    } catch (err) {
+      alert("שגיאה בהוספת הקישור. ודא שהשרת פועל.");
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   const handleMarkUsed = async (id: string) => {
     if (
@@ -83,10 +117,10 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-display font-bold">
-              קישורים ממתינים מקבוצת הווטסאפ
+              מאגר קישורים ממתינים
             </h3>
             <p className="text-sm text-[var(--color-punkt-muted)] mt-1">
-              כל קישור שנשלח לקבוצת "תוכן קבוצות פונקט" מגיע לכאן לאישור ותזמון.
+              כל קישור שנשלח לקבוצת הווטסאפ או מתווסף כאן, ימתין בתור לשיבוץ.
             </p>
           </div>
           <button
@@ -98,6 +132,42 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
           </button>
         </div>
 
+        {/* פאנל הוספת קישור ידני */}
+        <form
+          onSubmit={handleAddLink}
+          className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-4 mb-8 flex flex-col md:flex-row gap-3 shadow-lg"
+        >
+          <input
+            type="url"
+            placeholder="https://www.tiktok.com/..."
+            required
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-left"
+            dir="ltr"
+          />
+          <input
+            type="text"
+            placeholder="הערות למנהל (לא חובה)..."
+            value={newNotes}
+            onChange={(e) => setNewNotes(e.target.value)}
+            className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)]"
+          />
+          <button
+            type="submit"
+            disabled={!newUrl || isAdding}
+            className="bg-[var(--color-punkt-green)] text-black font-bold px-6 py-2.5 rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            {isAdding ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Plus size={18} />
+            )}
+            הוסף למאגר
+          </button>
+        </form>
+
+        {/* תצוגת הקישורים */}
         {isLoading ? (
           <div className="flex items-center justify-center h-40">
             <Loader2

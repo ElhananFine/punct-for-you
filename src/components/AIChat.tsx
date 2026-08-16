@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import { X, Send, Bot, User, Sparkles, Loader2 } from "lucide-react";
-import { GoogleGenAI } from "@google/genai";
 
 interface Message {
   id: string;
@@ -48,25 +47,23 @@ export function AIChat({ onClose }: { onClose: () => void }) {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      // פנייה לשרת הראשי שלנו (במקום פנייה ישירה לגוגל)
+      const res = await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/ai/chat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMsg.content }),
+        },
+      );
 
-      const prompt = `
-        You are an AI assistant for a WhatsApp advertising agency called "Punkt Media" (פונקט מדיה).
-        The user is asking a question about scheduling messages, finding free slots, or categorizing content.
-        Respond in Hebrew. Be helpful, concise, and professional but friendly.
-        
-        User question: ${userMsg.content}
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-preview",
-        contents: prompt,
-      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        content: response.text || "מצטער, לא הצלחתי להבין. אפשר לנסות שוב?",
+        content: data.text || "מצטער, לא הצלחתי להבין. אפשר לנסות שוב?",
         timestamp: new Date(),
       };
 
@@ -91,7 +88,6 @@ export function AIChat({ onClose }: { onClose: () => void }) {
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "-100%", opacity: 0 }}
       transition={{ type: "spring", damping: 25, stiffness: 200 }}
-      // שים לב לעדכון פה: במובייל זה רוחב מלא (w-full) ובדסקטופ 400 פיקסלים (md:w-[400px])
       className="fixed left-0 top-0 bottom-0 w-full md:w-[400px] bg-[var(--color-punkt-surface)] border-r border-[var(--color-punkt-border)] shadow-2xl z-[100] flex flex-col"
     >
       {/* Header */}
