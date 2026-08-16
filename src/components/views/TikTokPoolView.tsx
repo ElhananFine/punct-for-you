@@ -148,7 +148,7 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
           />
           <input
             type="text"
-            placeholder="הערות למנהל (לא חובה)..."
+            placeholder="הערות (אופציונלי)"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
             className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-2.5 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)]"
@@ -163,7 +163,7 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
             ) : (
               <Plus size={18} />
             )}
-            הוסף למאגר
+            הוספה למאגר
           </button>
         </form>
 
