@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { TikTokPoolLink } from "../../types";
 import { GROUPS } from "../../constants";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays } from "date-fns";
 import { he } from "date-fns/locale";
 
 interface NewScheduleModalProps {
@@ -162,6 +162,48 @@ export function NewScheduleModal({
       alert(e.message);
     } finally {
       setIsFetchingTiktok(false);
+    }
+  };
+
+  const handleRegenerateTiktokText = async () => {
+    setIsFetchingTiktok(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/tiktok/regenerate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ desc: originalTiktokDesc }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTextContent(data.text);
+    } catch (e: any) {
+      alert("שגיאה ביצירת טקסט חדש: " + e.message);
+    } finally {
+      setIsFetchingTiktok(false);
+    }
+  };
+
+  const handleGenerateWeather = async () => {
+    setIsGeneratingWeather(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/weather/generate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetDate: weatherDate }),
+        },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setTextContent(data.text);
+    } catch (e: any) {
+      alert("שגיאה ביצירת תחזית: " + e.message);
+    } finally {
+      setIsGeneratingWeather(false);
     }
   };
 
@@ -558,6 +600,15 @@ export function NewScheduleModal({
                 <Link2 size={16} /> מטיקטוק
               </div>
             </button>
+            <button
+              type="button"
+              onClick={() => setUploadMode("weather")}
+              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "weather" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <CloudSun size={16} /> מזג אוויר
+              </div>
+            </button>
           </div>
 
           {uploadMode === "tiktok" && (
@@ -595,8 +646,8 @@ export function NewScheduleModal({
                   value={tiktokUrl}
                   onChange={(e) => setTiktokUrl(e.target.value)}
                   placeholder="לינק טיקטוק..."
-                  className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none"
-                  dir="ltr"
+                  className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none text-left"
+                  dir={tiktokUrl ? "ltr" : "rtl"}
                 />
                 <button
                   type="button"
@@ -611,6 +662,46 @@ export function NewScheduleModal({
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {uploadMode === "weather" && (
+            <div className="space-y-4 bg-blue-500/5 p-4 rounded-xl border border-blue-500/20 flex flex-col items-center">
+              <CloudSun size={32} className="text-blue-400 mb-2" />
+              <p className="text-sm text-center text-blue-200">
+                בחר תאריך ליצירת תחזית מבוססת AI לפי 4 אזורים בארץ.
+                <br />
+                <span className="text-xs opacity-70">
+                  (ניתן לבחור עד 5 ימים קדימה)
+                </span>
+              </p>
+
+              <input
+                type="date"
+                value={weatherDate}
+                onChange={(e) => setWeatherDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
+                max={
+                  new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
+                    .toISOString()
+                    .split("T")[0]
+                }
+                className="bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-2 px-4 text-white focus:outline-none focus:border-blue-400 text-center w-full max-w-[200px]"
+              />
+
+              <button
+                type="button"
+                onClick={handleGenerateWeather}
+                disabled={isGeneratingWeather}
+                className="bg-blue-500 text-white font-bold py-2 px-6 rounded-xl hover:bg-blue-600 disabled:opacity-50 flex items-center gap-2 w-full max-w-[200px] justify-center"
+              >
+                {isGeneratingWeather ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <CloudSun size={18} />
+                )}
+                {isGeneratingWeather ? "מייצר תחזית..." : "חולל תחזית"}
+              </button>
             </div>
           )}
 
@@ -646,6 +737,26 @@ export function NewScheduleModal({
                   {selectedFile ? selectedFile.name : "לחץ או גרור קובץ"}
                 </span>
               </div>
+
+              {selectedFile && selectedFile.type.startsWith("image/") && (
+                <button
+                  type="button"
+                  onClick={handleAnalyzeFileWithAI}
+                  disabled={isAnalyzingFile}
+                  className="w-full bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-green)]/30 text-[var(--color-punkt-green)] font-bold py-2 rounded-xl hover:bg-[var(--color-punkt-green)]/10 disabled:opacity-50 flex items-center justify-center gap-2 transition"
+                >
+                  {isAnalyzingFile ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> ה-AI מנתח
+                      את התמונה...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} /> נסח טקסט אוטומטי מהתמונה
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
 
