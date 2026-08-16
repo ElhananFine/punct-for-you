@@ -21,11 +21,13 @@ import {
   UploadCloud,
   CloudSun,
   Sparkles,
+  Inbox,
 } from "lucide-react";
 import { GanttChart } from "./components/GanttChart";
 import { AIChat } from "./components/AIChat";
-import { motion, AnimatePresence } from "motion/react"; // שים לב: אם אתה משתמש ב-framer-motion, ייתכן שזה 'framer-motion'
-import { isSameWeek, isSameDay, parseISO, isBefore } from "date-fns";
+import { motion, AnimatePresence } from "motion/react";
+import { isSameWeek, isSameDay, parseISO, isBefore, format } from "date-fns";
+import { he } from "date-fns/locale";
 
 export interface ScheduledMessage {
   id: string;
@@ -37,6 +39,14 @@ export interface ScheduledMessage {
   status: "scheduled" | "sent" | "canceled";
   category?: string;
   group_id?: string;
+}
+
+export interface TikTokPoolLink {
+  id: string;
+  url: string;
+  notes: string;
+  status: string;
+  created_at: string;
 }
 
 export const GROUPS = [
@@ -497,6 +507,13 @@ function NewScheduleModal({
   const [fetchedMediaUrl, setFetchedMediaUrl] = useState("");
   const [originalTiktokDesc, setOriginalTiktokDesc] = useState("");
 
+  // TikTok Pool (מאגר) states
+  const [pendingLinks, setPendingLinks] = useState<TikTokPoolLink[]>([]);
+  const [isLoadingPool, setIsLoadingPool] = useState(false);
+  const [selectedPoolLinkId, setSelectedPoolLinkId] = useState<string | null>(
+    null,
+  );
+
   // Weather Mode states
   const [isGeneratingWeather, setIsGeneratingWeather] = useState(false);
   const tomorrow = new Date();
@@ -504,6 +521,33 @@ function NewScheduleModal({
   const [weatherDate, setWeatherDate] = useState(
     tomorrow.toISOString().split("T")[0],
   );
+
+  // Fetch Pool Links on load
+  useEffect(() => {
+    fetchPendingLinks();
+  }, []);
+
+  const fetchPendingLinks = async () => {
+    setIsLoadingPool(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/tiktok/pool",
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setPendingLinks(data || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch pending links:", e);
+    } finally {
+      setIsLoadingPool(false);
+    }
+  };
+
+  const handleSelectPoolLink = (link: TikTokPoolLink) => {
+    setTiktokUrl(link.url);
+    setSelectedPoolLinkId(link.id);
+  };
 
   // Actions
   const handleAnalyzeFileWithAI = async () => {
@@ -557,7 +601,16 @@ function NewScheduleModal({
       const data = await res.json();
       if (!res.ok)
         throw new Error(data.error || "שגיאה במשיכת הנתונים מטיקטוק");
-      setTextContent(data.text);
+
+      // אם בחרנו לינק מהמאגר שיש לו הערות - נשרשר את ההערות מתחת לטקסט האוטומטי כרקע (המשתמש יכול לערוך)
+      const poolNote = selectedPoolLinkId
+        ? pendingLinks.find((l) => l.id === selectedPoolLinkId)?.notes
+        : "";
+      const finalContent = poolNote
+        ? `${data.text}\n\n*הערת מנהל:* ${poolNote}`
+        : data.text;
+
+      setTextContent(finalContent);
       setFetchedMediaUrl(data.mediaUrl);
       setOriginalTiktokDesc(data.originalDesc);
     } catch (e: any) {
@@ -629,7 +682,6 @@ function NewScheduleModal({
       formData.append("pause", pauseOption);
       formData.append("content", textContent);
 
-      // הוספת הקובץ באופן יזום אם נבחר מצב ידני
       if (uploadMode === "manual" && selectedFile) {
         formData.set("file", selectedFile);
       }
@@ -649,6 +701,23 @@ function NewScheduleModal({
         throw new Error(
           "שגיאה בשליחת התזמון. ודא שהפונקציה בסופאבייס עובדת תקין.",
         );
+
+      // אם התזמון הצליח והשתמשנו בקישור מתוך מאגר הטיקטוק, נסמן אותו כמשומש
+      if (uploadMode === "tiktok" && selectedPoolLinkId) {
+        await fetch(
+          "https://three-of-day-bp4b.onrender.com/api/tiktok/pool/mark-used",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: selectedPoolLinkId,
+              targetGroupId: selectedGroupId,
+            }),
+          },
+        ).catch((err) =>
+          console.error("Failed to mark pool link as used", err),
+        );
+      }
 
       onSuccess();
       onClose();
@@ -702,7 +771,10 @@ function NewScheduleModal({
             </button>
             <button
               type="button"
-              onClick={() => setUploadMode("tiktok")}
+              onClick={() => {
+                setUploadMode("tiktok");
+                fetchPendingLinks();
+              }}
               className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "tiktok" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
             >
               <div className="flex items-center justify-center gap-2">
@@ -722,48 +794,117 @@ function NewScheduleModal({
 
           {/* Dynamic Input Areas */}
           {uploadMode === "tiktok" && (
-            <div className="space-y-4 bg-[var(--color-punkt-green)]/5 p-4 rounded-xl border border-[var(--color-punkt-green)]/20">
-              <label className="block text-sm font-bold text-[var(--color-punkt-green)]">
-                הדבק קישור טיקטוק:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={tiktokUrl}
-                  onChange={(e) => setTiktokUrl(e.target.value)}
-                  placeholder="https://www.tiktok.com/..."
-                  className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-left"
-                  dir="ltr"
-                />
-                <button
-                  type="button"
-                  onClick={handleFetchTiktok}
-                  disabled={isFetchingTiktok || !tiktokUrl}
-                  className="bg-[var(--color-punkt-green)] text-black font-bold px-4 rounded-xl hover:opacity-90 disabled:opacity-50 min-w-[100px] flex items-center justify-center"
-                >
-                  {isFetchingTiktok ? (
-                    <Loader2 size={18} className="animate-spin" />
+            <div className="space-y-4">
+              {/* אזור הקישורים הממתינים מתוך קבוצת הווטסאפ */}
+              <div className="bg-[var(--color-punkt-surface-hover)] p-4 rounded-xl border border-[var(--color-punkt-border)]">
+                <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-2">
+                  <h4 className="text-sm font-bold flex items-center gap-2 text-white">
+                    <Inbox size={16} className="text-pink-400" /> מאגר קישורים
+                    ממתינים
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={fetchPendingLinks}
+                    className="text-xs text-[var(--color-punkt-muted)] hover:text-white flex items-center gap-1"
+                  >
+                    <RefreshCw
+                      size={12}
+                      className={isLoadingPool ? "animate-spin" : ""}
+                    />{" "}
+                    רענן
+                  </button>
+                </div>
+
+                <div className="max-h-32 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                  {isLoadingPool ? (
+                    <div className="text-center py-4 text-[var(--color-punkt-muted)] text-xs">
+                      <Loader2
+                        size={16}
+                        className="animate-spin mx-auto mb-1"
+                      />{" "}
+                      טוען מאגר...
+                    </div>
+                  ) : pendingLinks.length === 0 ? (
+                    <div className="text-center py-4 text-[var(--color-punkt-muted)] text-xs">
+                      אין כרגע קישורים שממתינים בקבוצה.
+                    </div>
                   ) : (
-                    "משוך תוכן"
-                  )}
-                </button>
-              </div>
-              {fetchedMediaUrl && (
-                <div className="relative mt-2 rounded-xl overflow-hidden border border-[var(--color-punkt-green)]/30 flex justify-center bg-black">
-                  {fetchedMediaUrl.endsWith("jpg") ? (
-                    <img
-                      src={fetchedMediaUrl}
-                      className="max-h-48 object-contain"
-                    />
-                  ) : (
-                    <video
-                      src={fetchedMediaUrl}
-                      controls
-                      className="max-h-48 w-full object-contain"
-                    />
+                    pendingLinks.map((link) => (
+                      <div
+                        key={link.id}
+                        onClick={() => handleSelectPoolLink(link)}
+                        className={`p-2 rounded-lg border text-xs cursor-pointer transition-colors ${selectedPoolLinkId === link.id ? "border-[var(--color-punkt-green)] bg-[var(--color-punkt-green)]/10" : "border-[var(--color-punkt-border)] bg-[var(--color-punkt-bg)] hover:border-gray-500"}`}
+                      >
+                        <div
+                          className="text-gray-300 truncate font-mono"
+                          dir="ltr"
+                        >
+                          {link.url}
+                        </div>
+                        {link.notes && (
+                          <div className="text-gray-400 mt-1 font-bold">
+                            💬 {link.notes}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-gray-500 mt-1">
+                          {format(
+                            parseISO(link.created_at),
+                            "dd/MM/yyyy HH:mm",
+                          )}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
-              )}
+              </div>
+
+              {/* קלט הקישור והמשיכה בפועל */}
+              <div className="bg-[var(--color-punkt-green)]/5 p-4 rounded-xl border border-[var(--color-punkt-green)]/20">
+                <label className="block text-sm font-bold text-[var(--color-punkt-green)]">
+                  הדבק קישור טיקטוק או בחר מהמאגר:
+                </label>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="url"
+                    value={tiktokUrl}
+                    onChange={(e) => {
+                      setTiktokUrl(e.target.value);
+                      setSelectedPoolLinkId(null);
+                    }}
+                    placeholder="https://www.tiktok.com/..."
+                    className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[var(--color-punkt-green)] text-left"
+                    dir="ltr"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleFetchTiktok}
+                    disabled={isFetchingTiktok || !tiktokUrl}
+                    className="bg-[var(--color-punkt-green)] text-black font-bold px-4 rounded-xl hover:opacity-90 disabled:opacity-50 min-w-[100px] flex items-center justify-center"
+                  >
+                    {isFetchingTiktok ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      "משוך תוכן"
+                    )}
+                  </button>
+                </div>
+                {fetchedMediaUrl && (
+                  <div className="relative mt-2 rounded-xl overflow-hidden border border-[var(--color-punkt-green)]/30 flex justify-center bg-black">
+                    {fetchedMediaUrl.endsWith("jpg") ? (
+                      <img
+                        src={fetchedMediaUrl}
+                        className="max-h-48 object-contain"
+                      />
+                    ) : (
+                      <video
+                        src={fetchedMediaUrl}
+                        controls
+                        className="max-h-48 w-full object-contain"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
