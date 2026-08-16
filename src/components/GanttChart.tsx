@@ -31,7 +31,8 @@ import {
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion, AnimatePresence } from "motion/react";
-import { ScheduledMessage, GROUPS } from "../App";
+import { ScheduledMessage } from "../types";
+import { GROUPS } from "../constants";
 
 const DISPLAY_HOURS = Array.from({ length: 18 }, (_, i) => i + 6);
 
