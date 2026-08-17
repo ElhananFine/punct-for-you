@@ -67,7 +67,7 @@ export function BotCommandsView() {
                 onClick={() => setSelectedGroup(g.id)}
                 className={`px-5 py-2.5 rounded-xl font-bold transition-all ${selectedGroup === g.id ? "bg-[var(--color-punkt-green)] text-black shadow-[0_0_15px_rgba(86,192,142,0.4)]" : "bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] text-gray-400 hover:border-[var(--color-punkt-green)]"}`}
               >
-                {g.name} {g.id !== "punkt_foryou" ? "(ZingeR)" : "(Punkt)"}
+                {g.name}
               </button>
             ))}
           </div>

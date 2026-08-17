@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { TikTokPoolLink } from "../../types";
 import { GROUPS } from "../../constants";
-import { format, parseISO, addDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { he } from "date-fns/locale";
 
 interface NewScheduleModalProps {
@@ -253,20 +253,21 @@ export function NewScheduleModal({
             }),
           },
         );
+        if (!res.ok) throw new Error("שגיאת שרת בהעלאת המדיה");
         const data = await res.json();
         return data.url;
       };
 
-      // 1. טיפול בקבוצת פונקט (לולאות בבאקאנד)
+      // 1. טיפול בקבוצת פונקט (לולאות בבאקאנד שלנו)
       if (
         recurringMode !== "none" &&
         (selectedGroup === "punkt_foryou" || selectedGroup === "all")
       ) {
         setProgressMsg("מקים לולאה מותאמת בשרת...");
         let mUrl = fetchedMediaUrl;
-        if (uploadMode === "manual" && selectedFile) {
+        if (uploadMode === "manual" && selectedFile)
           mUrl = await uploadManualFile();
-        }
+
         await fetch(
           "https://three-of-day-bp4b.onrender.com/api/recurring/create",
           {
@@ -290,40 +291,54 @@ export function NewScheduleModal({
         );
       }
 
-      // 2. טיפול רגיל או זינגר
+      // 2. טיפול רגיל או זינגר (שליחה ישירה ללא #שלח של סופאבייס)
       if (selectedGroup !== "punkt_foryou") {
-        setProgressMsg("שולח בקשה למכשיר...");
+        setProgressMsg("שולח פקודה ל-ZingeR...");
         const targets =
           selectedGroup === "all"
             ? GROUPS.filter((g) => g.id !== "punkt_foryou")
             : [{ id: selectedGroup }];
 
         for (const target of targets) {
-          const payload = new FormData();
-          payload.append("groupId", target.id);
-          payload.append(
-            "content",
-            recurringMode !== "none"
-              ? `${zingerCmd}\n${finalContent}`
-              : finalContent,
-          );
-          payload.append(
-            "sendNow",
-            (sendNow || recurringMode !== "none").toString(),
-          );
-          payload.append("isStatus", isStatus.toString());
-          payload.append("pause", pauseOption);
-          if (uploadMode === "manual" && selectedFile)
-            payload.set("file", selectedFile);
-          if (uploadMode === "tiktok" && fetchedMediaUrl)
-            payload.append("mediaUrl", fetchedMediaUrl);
+          if (recurringMode !== "none") {
+            // תזמון קבוע של זינגר נשלח ישירות לווטסאפ (דרך הבאקאנד שלנו) בלי Supabase כדי למנוע הוספת #שלח!
+            let mUrl = fetchedMediaUrl;
+            if (uploadMode === "manual" && selectedFile)
+              mUrl = await uploadManualFile();
 
-          await fetch(
-            "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
-            { method: "POST", body: payload },
-          );
+            await fetch(
+              "https://three-of-day-bp4b.onrender.com/api/send-direct",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  groupId: target.id,
+                  content: `${zingerCmd}\n${finalContent}`,
+                  mediaUrl: mUrl,
+                }),
+              },
+            );
+          } else {
+            // תזמון רגיל (חד פעמי) דרך Supabase כדי שיופיע בגאנט
+            const payload = new FormData();
+            payload.append("groupId", target.id);
+            payload.append("content", finalContent);
+            payload.append("sendNow", sendNow.toString());
+            payload.append("isStatus", isStatus.toString());
+            payload.append("pause", pauseOption);
+            if (uploadMode === "manual" && selectedFile)
+              payload.set("file", selectedFile);
+            if (uploadMode === "tiktok" && fetchedMediaUrl)
+              payload.append("mediaUrl", fetchedMediaUrl);
+
+            await fetch(
+              "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
+              { method: "POST", body: payload },
+            );
+          }
         }
       } else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
+        // פונקט רגיל (חד פעמי) דרך סופאבייס (גאנט)
         setProgressMsg("שולח למכשיר...");
         formData.append("sendNow", sendNow.toString());
         formData.append("content", finalContent);
@@ -577,7 +592,6 @@ export function NewScheduleModal({
             </div>
           </div>
 
-          {/* Mode Selector */}
           <div className="flex bg-[var(--color-punkt-bg)] p-1 rounded-xl mb-4 border border-[var(--color-punkt-border)]">
             <button
               type="button"
@@ -662,6 +676,25 @@ export function NewScheduleModal({
                   )}
                 </button>
               </div>
+
+              {/* תצוגה מקדימה של הטיקטוק */}
+              {fetchedMediaUrl && (
+                <div className="relative mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-green)]/30 flex justify-center bg-black">
+                  {fetchedMediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                    <img
+                      src={fetchedMediaUrl}
+                      className="max-h-48 object-contain"
+                      alt="Preview"
+                    />
+                  ) : (
+                    <video
+                      src={fetchedMediaUrl}
+                      controls
+                      className="max-h-48 w-full object-contain"
+                    />
+                  )}
+                </div>
+              )}
             </div>
           )}
 
