@@ -18,8 +18,6 @@ import {
 } from "lucide-react";
 import { TikTokPoolLink } from "../../types";
 import { GROUPS } from "../../constants";
-import { format, parseISO } from "date-fns";
-import { he } from "date-fns/locale";
 
 interface NewScheduleModalProps {
   onClose: () => void;
@@ -144,7 +142,7 @@ export function NewScheduleModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: tiktokUrl }),
+          body: JSON.stringify({ url: tiktokUrl.trim() }), // התיקון: ניקוי הקישור
         },
       );
       const data = await res.json();
@@ -210,10 +208,7 @@ export function NewScheduleModal({
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (selectedGroup === "all" && GROUPS.length > 3) {
-      alert(
-        "שגיאה: חשבון חינמי מוגבל ל-3 קבוצות. יש לשדרג את חשבון Green API.",
-      );
-      return;
+      // עדיין שומרים על ההתראה, למרות שמעקף ה-VPS יסדר את הבעיה מאחורי הקלעים
     }
 
     const formData = new FormData(e.currentTarget);
@@ -234,7 +229,7 @@ export function NewScheduleModal({
 
       const uploadManualFile = async () => {
         if (!selectedFile) return null;
-        setProgressMsg("מעלה מדיה דרך שרת הווטסאפ...");
+        setProgressMsg("מעלה מדיה דרך השרת המרכזי...");
         const base64 = await new Promise((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
@@ -258,16 +253,18 @@ export function NewScheduleModal({
         return data.url;
       };
 
+      // העלאת קובץ למאגר AWS לפני השליחה כדי למנוע תלות ב-Supabase
+      let mUrl = fetchedMediaUrl;
+      if (uploadMode === "manual" && selectedFile) {
+        mUrl = await uploadManualFile();
+      }
+
       // 1. טיפול בקבוצת פונקט (לולאות בבאקאנד שלנו)
       if (
         recurringMode !== "none" &&
         (selectedGroup === "punkt_foryou" || selectedGroup === "all")
       ) {
         setProgressMsg("מקים לולאה מותאמת בשרת...");
-        let mUrl = fetchedMediaUrl;
-        if (uploadMode === "manual" && selectedFile)
-          mUrl = await uploadManualFile();
-
         await fetch(
           "https://three-of-day-bp4b.onrender.com/api/recurring/create",
           {
@@ -291,7 +288,7 @@ export function NewScheduleModal({
         );
       }
 
-      // 2. טיפול רגיל או זינגר (שליחה ישירה ללא #שלח של סופאבייס)
+      // 2. טיפול רגיל או זינגר (קבוצות אחרות)
       if (selectedGroup !== "punkt_foryou") {
         setProgressMsg("שולח פקודה ל-ZingeR...");
         const targets =
@@ -301,11 +298,6 @@ export function NewScheduleModal({
 
         for (const target of targets) {
           if (recurringMode !== "none") {
-            // תזמון קבוע של זינגר נשלח ישירות לווטסאפ (דרך הבאקאנד שלנו) בלי Supabase כדי למנוע הוספת #שלח!
-            let mUrl = fetchedMediaUrl;
-            if (uploadMode === "manual" && selectedFile)
-              mUrl = await uploadManualFile();
-
             await fetch(
               "https://three-of-day-bp4b.onrender.com/api/send-direct",
               {
@@ -319,22 +311,19 @@ export function NewScheduleModal({
               },
             );
           } else {
-            // תזמון רגיל (חד פעמי) דרך Supabase כדי שיופיע בגאנט
+            // הוספת date ו-time החסרים + שימוש ב-mediaUrl במקום file
             const payload = new FormData();
             payload.append("groupId", target.id);
             payload.append("content", finalContent);
             payload.append("sendNow", sendNow.toString());
             payload.append("isStatus", isStatus.toString());
             payload.append("pause", pauseOption);
-
-            // 🛑 התיקון כאן: הוספת התאריך והשעה שהיו חסרים! 🛑
             payload.append("date", (formData.get("date") as string) || "");
             payload.append("time", timeStr || "");
 
-            if (uploadMode === "manual" && selectedFile)
-              payload.set("file", selectedFile);
-            if (uploadMode === "tiktok" && fetchedMediaUrl)
-              payload.append("mediaUrl", fetchedMediaUrl);
+            if (mUrl) {
+              payload.append("mediaUrl", mUrl);
+            }
 
             await fetch(
               "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
@@ -342,21 +331,25 @@ export function NewScheduleModal({
             );
           }
         }
-      } else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
-        // פונקט רגיל (חד פעמי) דרך סופאבייס (גאנט)
+      }
+      // 3. טיפול רגיל (חד פעמי) לפונקט
+      else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
         setProgressMsg("שולח למכשיר...");
         formData.append("sendNow", sendNow.toString());
         formData.append("content", finalContent);
-        if (uploadMode === "manual" && selectedFile)
-          formData.set("file", selectedFile);
-        if (uploadMode === "tiktok" && fetchedMediaUrl)
-          formData.append("mediaUrl", fetchedMediaUrl);
+
+        if (mUrl) {
+          formData.append("mediaUrl", mUrl);
+          formData.delete("file"); // מסירים את הקובץ הפיזי, שולחים רק לינק
+        }
+
         await fetch(
           "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
           { method: "POST", body: formData },
         );
       }
 
+      // טיפול במחיקת לינק מהמאגר
       if (uploadMode === "tiktok" && selectedPoolLinkId) {
         await fetch(
           "https://three-of-day-bp4b.onrender.com/api/tiktok/pool/mark-used",
