@@ -326,6 +326,11 @@ export function NewScheduleModal({
             payload.append("sendNow", sendNow.toString());
             payload.append("isStatus", isStatus.toString());
             payload.append("pause", pauseOption);
+
+            // 🛑 התיקון כאן: הוספת התאריך והשעה שהיו חסרים! 🛑
+            payload.append("date", (formData.get("date") as string) || "");
+            payload.append("time", timeStr || "");
+
             if (uploadMode === "manual" && selectedFile)
               payload.set("file", selectedFile);
             if (uploadMode === "tiktok" && fetchedMediaUrl)

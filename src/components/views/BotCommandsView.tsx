@@ -15,20 +15,20 @@ export function BotCommandsView() {
   const [selectedGroup, setSelectedGroup] = useState<string>("punkt_foryou");
   const [isSending, setIsSending] = useState(false);
 
-  // פונקציה ששולחת את הפקודה ישירות ל-WhatsApp דרך פונקציית ה-Edge/API שלך
+  // פונקציה ששולחת את הפקודה ישירות ל-WhatsApp ללא תוספות של #שלח
   const sendCommand = async (command: string) => {
     setIsSending(true);
     try {
-      const formData = new FormData();
-      formData.append("groupId", selectedGroup);
-      formData.append("content", command);
-      formData.append("sendNow", "true"); // שולח מיד כדי שהבוט יקרא ויגיב
-
+      // שימוש ב-API הישיר של רנדר שלא משנה את הטקסט
       const response = await fetch(
-        "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
+        "https://three-of-day-bp4b.onrender.com/api/send-direct",
         {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            groupId: selectedGroup,
+            content: command,
+          }),
         },
       );
 
