@@ -8,6 +8,8 @@ export interface ScheduledMessage {
   status: "scheduled" | "sent" | "canceled";
   category?: string;
   group_id?: string;
+  bot_confirmed?: boolean; // האם הבוט אישר
+  created_at: string; // זמן יצירת ההודעה (כדי לחשב את ה-5 דקות)
 }
 
 export interface TikTokPoolLink {

@@ -16,6 +16,7 @@ import {
   subMonths,
   isBefore,
   parseISO,
+  differenceInMinutes,
 } from "date-fns";
 import { he } from "date-fns/locale";
 import {
@@ -28,6 +29,7 @@ import {
   X,
   Globe,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { motion, AnimatePresence } from "motion/react";
@@ -288,9 +290,30 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                           const minute = getMinutes(scheduledAtDate);
                           const leftPercent =
                             ((hour - 6 + minute / 60) / 18) * 100;
-                          const isSent =
-                            msg.status === "sent" ||
-                            isBefore(scheduledAtDate, new Date());
+
+                          // מעגל בקרה - לוגיקת תצוגה
+                          const createdAtDate = msg.created_at
+                            ? parseISO(msg.created_at)
+                            : new Date();
+                          const isZinger =
+                            msg.group_id && msg.group_id !== "punkt_foryou";
+
+                          // סטטוס נשלח נסמך על הודעת ביצוע הבוט אם זה זינגר
+                          const isSent = isZinger
+                            ? msg.status === "sent"
+                            : msg.status === "sent" ||
+                              isBefore(scheduledAtDate, new Date());
+
+                          // אזהרה: 5 דקות חלפו ואין אישור
+                          const minutesSinceCreation = differenceInMinutes(
+                            new Date(),
+                            createdAtDate,
+                          );
+                          const isWarning =
+                            isZinger &&
+                            msg.status === "scheduled" &&
+                            !msg.bot_confirmed &&
+                            minutesSinceCreation > 5;
 
                           const baseColor = getGroupColor(msg.group_id);
                           const rgbColor = hexToRgb(baseColor);
@@ -335,6 +358,14 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                       />
                                     </div>
                                   )}
+                                  {isWarning && (
+                                    <div className="absolute -top-1.5 -left-1.5 bg-[var(--color-punkt-bg)] rounded-full z-10 p-0.5">
+                                      <AlertTriangle
+                                        size={14}
+                                        className="text-red-500 animate-pulse drop-shadow-md"
+                                      />
+                                    </div>
+                                  )}
                                   {msg.media_type === "image" && (
                                     <ImageIcon className="w-4 h-4 md:w-5 md:h-5" />
                                   )}
@@ -370,11 +401,19 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span
-                                        className={`text-[10px] md:text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}
+                                        className={`text-[10px] md:text-xs font-bold px-2 py-1 rounded-md flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : isWarning ? "bg-red-500/10 text-red-400" : "bg-amber-500/10 text-amber-400"}`}
                                       >
                                         {isSent ? (
                                           <>
                                             <CheckCircle2 size={12} /> נשלח
+                                          </>
+                                        ) : isWarning ? (
+                                          <>
+                                            <AlertTriangle
+                                              size={12}
+                                              className="animate-pulse"
+                                            />{" "}
+                                            שגיאת תזמון
                                           </>
                                         ) : (
                                           <>
@@ -396,6 +435,16 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                                       </span>
                                     </div>
                                   </div>
+
+                                  {isWarning && (
+                                    <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold p-2.5 rounded-lg flex items-center gap-2 mb-3">
+                                      <AlertTriangle size={16} />
+                                      <div className="leading-tight text-right">
+                                        שים לב! עברו מעל 5 דקות והמערכת לא קיבלה
+                                        אישור תזמון מבוט הווטסאפ.
+                                      </div>
+                                    </div>
+                                  )}
 
                                   <div className="overflow-y-auto flex-1 pr-1 custom-scrollbar">
                                     <div
@@ -562,9 +611,26 @@ function VerticalDayView({
                 ) : (
                   hourMsgs.map((msg) => {
                     const scheduledAtDate = parseISO(msg.scheduled_at);
-                    const isSent =
-                      msg.status === "sent" ||
-                      isBefore(scheduledAtDate, new Date());
+                    const createdAtDate = msg.created_at
+                      ? parseISO(msg.created_at)
+                      : new Date();
+
+                    const isZinger =
+                      msg.group_id && msg.group_id !== "punkt_foryou";
+                    const isSent = isZinger
+                      ? msg.status === "sent"
+                      : msg.status === "sent" ||
+                        isBefore(scheduledAtDate, new Date());
+
+                    const minutesSinceCreation = differenceInMinutes(
+                      new Date(),
+                      createdAtDate,
+                    );
+                    const isWarning =
+                      isZinger &&
+                      msg.status === "scheduled" &&
+                      !msg.bot_confirmed &&
+                      minutesSinceCreation > 5;
 
                     const baseColor = getGroupColor(msg.group_id);
                     const rgbColor = hexToRgb(baseColor);
@@ -605,11 +671,25 @@ function VerticalDayView({
                           </div>
                           <div className="flex items-center gap-2">
                             <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${isSent ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400"}`}
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                                isSent
+                                  ? "bg-emerald-500/10 text-emerald-400"
+                                  : isWarning
+                                    ? "bg-red-500/10 text-red-400"
+                                    : "bg-amber-500/10 text-amber-400"
+                              }`}
                             >
                               {isSent ? (
                                 <>
                                   <CheckCircle2 size={10} /> נשלח
+                                </>
+                              ) : isWarning ? (
+                                <>
+                                  <AlertTriangle
+                                    size={10}
+                                    className="animate-pulse"
+                                  />{" "}
+                                  תזמון נכשל
                                 </>
                               ) : (
                                 "ממתין"
