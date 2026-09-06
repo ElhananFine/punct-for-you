@@ -205,200 +205,211 @@ export function NewScheduleModal({
     }
   };
 
-const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  if (selectedGroup === "all" && GROUPS.length > 3) {
-    // עדיין שומרים על ההתראה, למרות שמעקף ה-VPS יסדר את הבעיה מאחורי הקלעים
-  }
-
-  const formData = new FormData(e.currentTarget);
-  const timeStr = formData.get("time") as string;
-  const selectedDateStr = formData.get("date") as string;
-
-  // חסימת תזמון בשבת קודש (משישי ב-16:00 ועד מוצאי שבת ב-18:00)
-  if (selectedDateStr && timeStr && recurringMode === "none") {
-    const [day, month] = selectedDateStr.split(/[\/\.]/);
-    const curYear = new Date().getFullYear();
-    // אם החודש עבר, זה שייך לשנה הבאה
-    const year =
-      parseInt(month) < new Date().getMonth() + 1 ? curYear + 1 : curYear;
-
-    const paddedDay = day.padStart(2, "0");
-    const paddedMonth = month.padStart(2, "0");
-    const scheduleDate = new Date(
-      `${year}-${paddedMonth}-${paddedDay}T${timeStr}:00`,
-    );
-    const dayOfWeek = scheduleDate.getDay(); // 0=ראשון, 5=שישי, 6=שבת
-    const hour = scheduleDate.getHours();
-
-    if ((dayOfWeek === 5 && hour >= 16) || (dayOfWeek === 6 && hour < 18)) {
-      alert(
-        "⚠️ שים לב: אי אפשר לתזמן הודעות לזמן שבת קודש! (משישי אחה״צ ועד מוצ״ש). המערכת שומרת שבת.",
-      );
-      return;
-    }
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    let finalContent = textContent;
-    if (noWatermark) finalContent += "\n%";
-    if (noSignature) finalContent += "\n\n#";
-    if (skipPlatform !== "none")
-      finalContent = `${skipPlatform}\n${finalContent}`;
-
-    const zingerCmd =
-      recurringMode === "daily"
-        ? `#תזמון כל יום ${timeStr}`
-        : `#תזמון כל ${recurringDay} ${timeStr}`;
-
-    const uploadManualFile = async () => {
-      if (!selectedFile) return null;
-      setProgressMsg("מעלה מדיה דרך השרת המרכזי...");
-      const base64 = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(selectedFile);
-      });
-      const ext = selectedFile.name.split(".").pop() || "jpg";
-      const res = await fetch(
-        "https://three-of-day-bp4b.onrender.com/api/upload-media",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            base64Data: base64,
-            mimeType: selectedFile.type,
-            extension: ext,
-          }),
-        },
-      );
-      if (!res.ok) throw new Error("שגיאת שרת בהעלאת המדיה");
-      const data = await res.json();
-      return data.url;
-    };
-
-    // העלאת קובץ למאגר AWS לפני השליחה כדי למנוע תלות ב-Supabase
-    let mUrl = fetchedMediaUrl;
-    if (uploadMode === "manual" && selectedFile) {
-      mUrl = await uploadManualFile();
+  const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (selectedGroup === "all" && GROUPS.length > 3) {
+      // עדיין שומרים על ההתראה, למרות שמעקף ה-VPS יסדר את הבעיה מאחורי הקלעים
     }
 
-    // 1. טיפול בקבוצת פונקט (לולאות בבאקאנד שלנו)
-    if (
-      recurringMode !== "none" &&
-      (selectedGroup === "punkt_foryou" || selectedGroup === "all")
-    ) {
-      setProgressMsg("מקים לולאה מותאמת בשרת...");
-      await fetch(
-        "https://three-of-day-bp4b.onrender.com/api/recurring/create",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            groupId: "punkt_foryou",
-            content: finalContent,
-            mediaType:
-              uploadMode === "tiktok"
-                ? "video"
-                : selectedFile?.type.startsWith("image/")
-                  ? "image"
-                  : "video",
-            mediaUrl: mUrl,
-            timeStr: timeStr,
-            mode: recurringMode === "daily" ? "daily" : recurringDay,
-            endDate: recurringEndDate,
-          }),
-        },
+    const formData = new FormData(e.currentTarget);
+    const timeStr = formData.get("time") as string;
+    const selectedDateStr = formData.get("date") as string;
+
+    // חסימת תזמון בשבת קודש (משישי ב-16:00 ועד מוצאי שבת ב-18:00)
+    if (selectedDateStr && timeStr && recurringMode === "none") {
+      const [day, month] = selectedDateStr.split(/[\/\.]/);
+      const curYear = new Date().getFullYear();
+      // אם החודש עבר, זה שייך לשנה הבאה
+      const year =
+        parseInt(month) < new Date().getMonth() + 1 ? curYear + 1 : curYear;
+
+      const paddedDay = day.padStart(2, "0");
+      const paddedMonth = month.padStart(2, "0");
+      const scheduleDate = new Date(
+        `${year}-${paddedMonth}-${paddedDay}T${timeStr}:00`,
       );
+      const dayOfWeek = scheduleDate.getDay(); // 0=ראשון, 5=שישי, 6=שבת
+      const hour = scheduleDate.getHours();
+
+      if ((dayOfWeek === 5 && hour >= 16) || (dayOfWeek === 6 && hour < 18)) {
+        alert(
+          "⚠️ שים לב: אי אפשר לתזמן הודעות לזמן שבת קודש! (משישי אחה״צ ועד מוצ״ש). המערכת שומרת שבת.",
+        );
+        return;
+      }
     }
 
-    // 2. טיפול רגיל או זינגר (קבוצות אחרות)
-    if (selectedGroup !== "punkt_foryou") {
-      setProgressMsg("שולח פקודה ל-ZingeR...");
-      const targets =
-        selectedGroup === "all"
-          ? GROUPS.filter((g) => g.id !== "punkt_foryou")
-          : [{ id: selectedGroup }];
+    setIsSubmitting(true);
 
-      for (const target of targets) {
-        if (recurringMode !== "none") {
-          await fetch(
-            "https://three-of-day-bp4b.onrender.com/api/send-direct",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                groupId: target.id,
-                content: `${zingerCmd}\n${finalContent}`,
-                mediaUrl: mUrl,
-              }),
-            },
-          );
-        } else {
-          // הוספת date ו-time החסרים + שימוש ב-mediaUrl במקום file
-          const payload = new FormData();
-          payload.append("groupId", target.id);
-          payload.append("content", finalContent);
-          payload.append("sendNow", sendNow.toString());
-          payload.append("isStatus", isStatus.toString());
-          payload.append("pause", pauseOption);
-          payload.append("date", (formData.get("date") as string) || "");
-          payload.append("time", timeStr || "");
+    try {
+      let finalContent = textContent;
+      if (noWatermark) finalContent += "\n%";
+      if (noSignature) finalContent += "\n\n#";
+      if (skipPlatform !== "none")
+        finalContent = `${skipPlatform}\n${finalContent}`;
 
-          if (mUrl) {
-            payload.append("mediaUrl", mUrl);
+      const zingerCmd =
+        recurringMode === "daily"
+          ? `#תזמון כל יום ${timeStr}`
+          : `#תזמון כל ${recurringDay} ${timeStr}`;
+
+      const uploadManualFile = async () => {
+        if (!selectedFile) return null;
+        setProgressMsg("מעלה מדיה דרך השרת המרכזי...");
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(selectedFile);
+        });
+        const ext = selectedFile.name.split(".").pop() || "jpg";
+        const res = await fetch(
+          "https://three-of-day-bp4b.onrender.com/api/upload-media",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              base64Data: base64,
+              mimeType: selectedFile.type,
+              extension: ext,
+            }),
+          },
+        );
+        if (!res.ok) throw new Error("שגיאת שרת בהעלאת המדיה");
+        const data = await res.json();
+        return data.url;
+      };
+
+      // העלאת קובץ למאגר AWS לפני השליחה כדי למנוע תלות ב-Supabase
+      let mUrl = fetchedMediaUrl;
+      if (uploadMode === "manual" && selectedFile) {
+        mUrl = await uploadManualFile();
+      }
+
+      // 1. טיפול בקבוצת פונקט (לולאות בבאקאנד שלנו)
+      if (
+        recurringMode !== "none" &&
+        (selectedGroup === "punkt_foryou" || selectedGroup === "all")
+      ) {
+        setProgressMsg("מקים לולאה מותאמת בשרת...");
+        await fetch(
+          "https://three-of-day-bp4b.onrender.com/api/recurring/create",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              groupId: "punkt_foryou",
+              content: finalContent,
+              mediaType:
+                uploadMode === "tiktok"
+                  ? "video"
+                  : selectedFile?.type.startsWith("image/")
+                    ? "image"
+                    : "video",
+              mediaUrl: mUrl,
+              timeStr: timeStr,
+              mode: recurringMode === "daily" ? "daily" : recurringDay,
+              endDate: recurringEndDate,
+            }),
+          },
+        );
+      }
+
+      // 2. טיפול רגיל או זינגר (קבוצות אחרות)
+      if (selectedGroup !== "punkt_foryou") {
+        setProgressMsg("שולח פקודה ל-ZingeR...");
+        const targets =
+          selectedGroup === "all"
+            ? GROUPS.filter((g) => g.id !== "punkt_foryou")
+            : [{ id: selectedGroup }];
+
+        for (const target of targets) {
+          if (recurringMode !== "none") {
+            await fetch(
+              "https://three-of-day-bp4b.onrender.com/api/send-direct",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  groupId: target.id,
+                  content: `${zingerCmd}\n${finalContent}`,
+                  mediaUrl: mUrl,
+                }),
+              },
+            );
+          } else {
+            // הוספת date ו-time החסרים + שימוש ב-mediaUrl במקום file
+            const payload = new FormData();
+            payload.append("groupId", target.id);
+            payload.append("content", finalContent);
+            payload.append("sendNow", sendNow.toString());
+            payload.append("isStatus", isStatus.toString());
+            payload.append("pause", pauseOption);
+
+            // --- המרה אוטומטית של מילים לתאריכים עבור ZingeR ---
+            let processedDate = ((formData.get("date") as string) || "").trim();
+            if (processedDate === "היום") {
+              const today = new Date();
+              processedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}`;
+            } else if (processedDate === "מחר") {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              processedDate = `${String(tomorrow.getDate()).padStart(2, "0")}/${String(tomorrow.getMonth() + 1).padStart(2, "0")}`;
+            }
+
+            payload.append("date", processedDate);
+            payload.append("time", timeStr || "");
+            if (mUrl) {
+              payload.append("mediaUrl", mUrl);
+            }
+
+            await fetch(
+              "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
+              { method: "POST", body: payload },
+            );
           }
-
-          await fetch(
-            "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
-            { method: "POST", body: payload },
-          );
         }
       }
-    }
-    // 3. טיפול רגיל (חד פעמי) לפונקט
-    else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
-      setProgressMsg("שולח למכשיר...");
-      formData.append("sendNow", sendNow.toString());
-      formData.append("content", finalContent);
+      // 3. טיפול רגיל (חד פעמי) לפונקט
+      else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
+        setProgressMsg("שולח למכשיר...");
+        formData.append("sendNow", sendNow.toString());
+        formData.append("content", finalContent);
 
-      if (mUrl) {
-        formData.append("mediaUrl", mUrl);
-        formData.delete("file"); // מסירים את הקובץ הפיזי, שולחים רק לינק
+        if (mUrl) {
+          formData.append("mediaUrl", mUrl);
+          formData.delete("file"); // מסירים את הקובץ הפיזי, שולחים רק לינק
+        }
+
+        await fetch(
+          "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
+          { method: "POST", body: formData },
+        );
       }
 
-      await fetch(
-        "https://edqhvnrdygdqvetcrebv.supabase.co/functions/v1/send-wa-schedule",
-        { method: "POST", body: formData },
-      );
-    }
+      // טיפול במחיקת לינק מהמאגר
+      if (uploadMode === "tiktok" && selectedPoolLinkId) {
+        await fetch(
+          "https://three-of-day-bp4b.onrender.com/api/tiktok/pool/mark-used",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: selectedPoolLinkId,
+              targetGroupId: selectedGroup,
+            }),
+          },
+        );
+      }
 
-    // טיפול במחיקת לינק מהמאגר
-    if (uploadMode === "tiktok" && selectedPoolLinkId) {
-      await fetch(
-        "https://three-of-day-bp4b.onrender.com/api/tiktok/pool/mark-used",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: selectedPoolLinkId,
-            targetGroupId: selectedGroup,
-          }),
-        },
-      );
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsSubmitting(false);
+      setProgressMsg("");
     }
-
-    onSuccess();
-    onClose();
-  } catch (error: any) {
-    alert(error.message);
-  } finally {
-    setIsSubmitting(false);
-    setProgressMsg("");
-  }
-};
+  };
 
   return (
     <motion.div
