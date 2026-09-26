@@ -23,6 +23,7 @@ export function Header({
     gantt: "לוח שידורים",
     "tiktok-pool": "מאגר קישורים לטיקטוק",
     settings: "הגדרות מערכת",
+    recurring: "ניהול תזמונים קבועים",
   };
 
   return (

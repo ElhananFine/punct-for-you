@@ -8,6 +8,7 @@ import {
   Inbox,
   X,
   Terminal,
+  Repeat,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -91,6 +92,13 @@ export function Sidebar({
                 active={activeView === "gantt"}
                 onClick={() => handleNavClick("gantt")}
               />
+              <NavItem
+                icon={<Repeat size={20} />}
+                label="תזמונים קבועים"
+                active={activeView === "recurring"}
+                onClick={() => handleNavClick("recurring")}
+              />
+
               <NavItem
                 icon={<Inbox size={20} />}
                 label="מאגר טיקטוק"

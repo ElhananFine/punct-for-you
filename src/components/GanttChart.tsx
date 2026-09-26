@@ -116,6 +116,36 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
     });
   };
 
+  const handleDeleteSchedule = async () => {
+    if (!selectedMessage) return;
+
+    const isZinger =
+      selectedMessage.group_id && selectedMessage.group_id !== "punkt_foryou";
+
+    const confirmMsg = isZinger
+      ? "⚠️ שים לב! מחיקה מכאן תסיר את ההודעה מהלוח בלבד.\nמכיוון שזה זינגר, חובה עליך לשלוח גם פקודת #ביטול בקבוצת הווטסאפ!\nהאם להמשיך?"
+      : "האם אתה בטוח שברצונך למחוק תזמון זה לצמיתות?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/schedules/delete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectedMessage.id }),
+        },
+      );
+
+      // מעדכן את התצוגה מקומית כדי שלא נצטרך לרענן את כל הדף
+      selectedMessage.status = "canceled";
+      setSelectedMessage(null);
+    } catch (e) {
+      alert("שגיאה במחיקה");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -520,12 +550,20 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                       is24hFormat,
                     )}
                   </div>
-                  <button
-                    onClick={() => setSelectedMessage(null)}
-                    className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-xl hover:bg-white/5 transition-colors"
-                  >
-                    <X size={24} />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDeleteSchedule}
+                      className="px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/30 rounded-xl hover:bg-red-500/20 text-sm font-bold transition-colors"
+                    >
+                      מחק תזמון
+                    </button>
+                    <button
+                      onClick={() => setSelectedMessage(null)}
+                      className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-xl hover:bg-white/5 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 pb-2">

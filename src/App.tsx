@@ -19,6 +19,7 @@ import { GanttChart } from "./components/GanttChart";
 import { TikTokPoolView } from "./components/views/TikTokPoolView";
 import { NewScheduleModal } from "./components/modals/NewScheduleModal";
 import { BotCommandsView } from "./components/views/BotCommandsView";
+import { RecurringSchedulesView } from "./components/views/RecurringSchedulesView";
 
 // ==========================================
 // Main App Component
@@ -27,7 +28,12 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeView, setActiveView] = useState<
-    "dashboard" | "gantt" | "tiktok-pool" | "commands" | "settings"
+    | "dashboard"
+    | "gantt"
+    | "tiktok-pool"
+    | "recurring"
+    | "commands"
+    | "settings"
   >("dashboard");
   // Data
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
@@ -142,6 +148,8 @@ export default function App() {
         {activeView === "tiktok-pool" && (
           <TikTokPoolView onScheduleLink={openNewScheduleWithLink} />
         )}
+
+        {activeView === "recurring" && <RecurringSchedulesView />}
 
         {activeView === "commands" && <BotCommandsView />}
 

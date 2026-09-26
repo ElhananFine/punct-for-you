@@ -207,8 +207,16 @@ export function NewScheduleModal({
 
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!textContent.trim() && !selectedFile && !fetchedMediaUrl) {
+      alert(
+        "⚠️ אי אפשר לתזמן הודעה ריקה! נא לכתוב טקסט, להעלות קובץ, או למשוך סרטון מטיקטוק.",
+      );
+      setIsSubmitting(false);
+      return;
+    }
+
     if (selectedGroup === "all" && GROUPS.length > 3) {
-      // עדיין שומרים על ההתראה, למרות שמעקף ה-VPS יסדר את הבעיה מאחורי הקלעים
     }
 
     const formData = new FormData(e.currentTarget);
