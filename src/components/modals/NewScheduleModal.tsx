@@ -208,42 +208,52 @@ export function NewScheduleModal({
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    const formData = new FormData(e.currentTarget);
+    const rawDate = ((formData.get("date") as string) || "").trim();
+    const timeStr = ((formData.get("time") as string) || "").trim();
+
+    // 1. חסימת הודעה ריקה
     if (!textContent.trim() && !selectedFile && !fetchedMediaUrl) {
       alert(
         "⚠️ אי אפשר לתזמן הודעה ריקה! נא לכתוב טקסט, להעלות קובץ, או למשוך סרטון מטיקטוק.",
       );
-      setIsSubmitting(false);
       return;
     }
 
-    if (selectedGroup === "all" && GROUPS.length > 3) {
+    // 2. המרת "היום" / "מחר" לתאריך במספרים (חובה לעשות את זה לפני בדיקת שבת)
+    let processedDate = rawDate;
+    if (rawDate === "היום") {
+      const today = new Date();
+      processedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}`;
+    } else if (rawDate === "מחר") {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      processedDate = `${String(tomorrow.getDate()).padStart(2, "0")}/${String(tomorrow.getMonth() + 1).padStart(2, "0")}`;
     }
 
-    const formData = new FormData(e.currentTarget);
-    const timeStr = formData.get("time") as string;
-    const selectedDateStr = formData.get("date") as string;
+    // 3. בדיקת שבת (עובדת כעת על התאריך המעובד)
+    if (processedDate && timeStr && recurringMode === "none" && !sendNow) {
+      const parts = processedDate.split(/[\/\.]/);
+      if (parts.length === 2) {
+        const day = parts[0];
+        const month = parts[1];
+        const curYear = new Date().getFullYear();
+        // אם החודש עבר, זה שייך לשנה הבאה
+        const year =
+          parseInt(month) < new Date().getMonth() + 1 ? curYear + 1 : curYear;
 
-    // חסימת תזמון בשבת קודש (משישי ב-16:00 ועד מוצאי שבת ב-18:00)
-    if (selectedDateStr && timeStr && recurringMode === "none") {
-      const [day, month] = selectedDateStr.split(/[\/\.]/);
-      const curYear = new Date().getFullYear();
-      // אם החודש עבר, זה שייך לשנה הבאה
-      const year =
-        parseInt(month) < new Date().getMonth() + 1 ? curYear + 1 : curYear;
-
-      const paddedDay = day.padStart(2, "0");
-      const paddedMonth = month.padStart(2, "0");
-      const scheduleDate = new Date(
-        `${year}-${paddedMonth}-${paddedDay}T${timeStr}:00`,
-      );
-      const dayOfWeek = scheduleDate.getDay(); // 0=ראשון, 5=שישי, 6=שבת
-      const hour = scheduleDate.getHours();
-
-      if ((dayOfWeek === 5 && hour >= 16) || (dayOfWeek === 6 && hour < 18)) {
-        alert(
-          "⚠️ שים לב: אי אפשר לתזמן הודעות לזמן שבת קודש! (משישי אחה״צ ועד מוצ״ש). המערכת שומרת שבת.",
+        const scheduleDate = new Date(
+          `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${timeStr}:00`,
         );
-        return;
+        const dayOfWeek = scheduleDate.getDay();
+        const hour = scheduleDate.getHours();
+
+        if ((dayOfWeek === 5 && hour >= 16) || (dayOfWeek === 6 && hour < 18)) {
+          alert(
+            "⚠️ שים לב: אי אפשר לתזמן הודעות לזמן שבת קודש! המערכת שומרת שבת.",
+          );
+          return;
+        }
       }
     }
 
