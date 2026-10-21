@@ -51,6 +51,7 @@ src/
       NewScheduleModal.tsx
     views/
       BotCommandsView.tsx
+      RecurringSchedulesView.tsx
       TikTokPoolView.tsx
     AIChat.tsx
     GanttChart.tsx
@@ -212,73 +213,126 @@ function StatCard({
 }
 </file>
 
-<file path="src/components/layout/Header.tsx">
-import React from "react";
-import { Menu, Search, Plus } from "lucide-react";
+<file path="src/components/views/RecurringSchedulesView.tsx">
+import React, { useEffect, useState } from "react";
+import { format, parseISO } from "date-fns";
+import { he } from "date-fns/locale";
+import { Trash2, Repeat, Loader2, CalendarClock } from "lucide-react";
+import { GROUPS } from "../../constants";
 
-interface HeaderProps {
-  activeView: string;
-  isSidebarOpen: boolean;
-  setIsSidebarOpen: (v: boolean) => void;
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
-  openNewSchedule: () => void;
-}
+export function RecurringSchedulesView() {
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-export function Header({
-  activeView,
-  isSidebarOpen,
-  setIsSidebarOpen,
-  searchQuery,
-  setSearchQuery,
-  openNewSchedule,
-}: HeaderProps) {
-  const viewTitles: any = {
-    dashboard: "דשבורד ראשי",
-    gantt: "לוח שידורים",
-    "tiktok-pool": "מאגר קישורים לטיקטוק",
-    settings: "הגדרות מערכת",
+  const fetchRecurring = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/recurring",
+      );
+      const data = await res.json();
+      setSchedules(data || []);
+    } catch (e) {
+      console.error("Failed to fetch recurring", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecurring();
+  }, []);
+
+  const handleCancel = async (id: string) => {
+    if (
+      !window.confirm(
+        "האם למחוק את התזמון הקבוע הזה? המערכת תפסיק לשגר אותו באופן מיידי.",
+      )
+    )
+      return;
+
+    try {
+      await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/recurring/cancel",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        },
+      );
+      fetchRecurring();
+    } catch (e) {
+      alert("שגיאה בביטול");
+    }
   };
 
   return (
-    <header className="h-16 lg:h-20 border-b border-[var(--color-punkt-border)] glass-panel flex items-center justify-between px-4 lg:px-6 z-30 sticky top-0">
-      <div className="flex items-center gap-3 lg:gap-4">
-        {!isSidebarOpen && (
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -mr-2 lg:mr-0 text-[var(--color-punkt-muted)] hover:text-white rounded-lg hover:bg-[var(--color-punkt-surface)] transition-colors"
-          >
-            <Menu size={24} />
-          </button>
-        )}
-        <h2 className="text-xl lg:text-2xl font-display font-bold truncate">
-          {viewTitles[activeView]}
-        </h2>
-      </div>
-
-      <div className="flex items-center gap-2 lg:gap-4">
-        <div className="relative hidden md:block">
-          <Search
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-punkt-muted)]"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="חיפוש קמפיין..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-full py-2 pr-10 pl-4 text-sm focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors w-64"
-          />
+    <div className="flex-1 overflow-y-auto p-4 lg:p-6 bg-[var(--color-punkt-bg)] z-0 relative">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-8">
+          <h3 className="text-2xl font-display font-bold flex items-center gap-2">
+            <Repeat className="text-[var(--color-punkt-green)]" /> ניהול תזמונים
+            קבועים
+          </h3>
+          <p className="text-[var(--color-punkt-muted)] mt-2">
+            כאן מופיעים כל התזמונים שמוגדרים לחזור על עצמם (יומי/שבועי). ניתן
+            לבטל אותם בכל עת.
+          </p>
         </div>
-        <button
-          onClick={openNewSchedule}
-          className="flex items-center justify-center gap-2 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-500 text-black w-10 h-10 lg:w-auto lg:px-4 lg:py-2 rounded-full transition-all hover:scale-105 cursor-pointer relative z-50 shadow-lg"
-        >
-          <Plus size={18} />
-          <span className="hidden lg:block text-sm font-bold">תזמון חדש</span>
-        </button>
+
+        {isLoading ? (
+          <div className="flex justify-center p-12">
+            <Loader2 className="animate-spin text-emerald-500" size={32} />
+          </div>
+        ) : schedules.length === 0 ? (
+          <div className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-12 text-center text-gray-400">
+            אין כרגע תזמונים קבועים פעילים במערכת.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {schedules.map((item) => (
+              <div
+                key={item.id}
+                className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-5 hover:border-[var(--color-punkt-green)] transition-all"
+              >
+                <div className="flex justify-between items-start mb-3 border-b border-gray-800 pb-3">
+                  <div className="flex flex-col">
+                    <span className="text-emerald-400 font-bold flex items-center gap-1.5 text-sm">
+                      <CalendarClock size={16} />
+                      {item.mode === "daily"
+                        ? "חוזר כל יום"
+                        : `חוזר כל יום ${item.mode}`}{" "}
+                      בשעה {item.time_str}
+                    </span>
+                    <span className="text-xs text-gray-500 mt-1">
+                      קבוצה:{" "}
+                      {GROUPS.find((g) => g.id === item.group_id)?.name ||
+                        item.group_id}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleCancel(item.id)}
+                    className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors"
+                    title="בטל תזמון קבוע"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+
+                <div className="text-sm text-gray-300 whitespace-pre-wrap line-clamp-4">
+                  {item.content}
+                </div>
+
+                <div className="mt-4 text-xs font-mono text-gray-500">
+                  תאריך סיום מוגדר:{" "}
+                  {format(parseISO(item.end_date), "dd/MM/yyyy")}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </header>
+    </div>
   );
 }
 </file>
@@ -609,6 +663,147 @@ export default defineConfig(({mode}) => {
 });
 </file>
 
+<file path="src/components/layout/Header.tsx">
+import React from "react";
+import { Menu, Search, Plus } from "lucide-react";
+
+interface HeaderProps {
+  activeView: string;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (v: boolean) => void;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  openNewSchedule: () => void;
+}
+
+export function Header({
+  activeView,
+  isSidebarOpen,
+  setIsSidebarOpen,
+  searchQuery,
+  setSearchQuery,
+  openNewSchedule,
+}: HeaderProps) {
+  const viewTitles: any = {
+    dashboard: "דשבורד ראשי",
+    gantt: "לוח שידורים",
+    "tiktok-pool": "מאגר קישורים לטיקטוק",
+    settings: "הגדרות מערכת",
+    recurring: "ניהול תזמונים קבועים",
+  };
+
+  return (
+    <header className="h-16 lg:h-20 border-b border-[var(--color-punkt-border)] glass-panel flex items-center justify-between px-4 lg:px-6 z-30 sticky top-0">
+      <div className="flex items-center gap-3 lg:gap-4">
+        {!isSidebarOpen && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 -mr-2 lg:mr-0 text-[var(--color-punkt-muted)] hover:text-white rounded-lg hover:bg-[var(--color-punkt-surface)] transition-colors"
+          >
+            <Menu size={24} />
+          </button>
+        )}
+        <h2 className="text-xl lg:text-2xl font-display font-bold truncate">
+          {viewTitles[activeView]}
+        </h2>
+      </div>
+
+      <div className="flex items-center gap-2 lg:gap-4">
+        <div className="relative hidden md:block">
+          <Search
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-punkt-muted)]"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="חיפוש קמפיין..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-full py-2 pr-10 pl-4 text-sm focus:outline-none focus:border-[var(--color-punkt-green)] transition-colors w-64"
+          />
+        </div>
+        <button
+          onClick={openNewSchedule}
+          className="flex items-center justify-center gap-2 bg-gradient-to-r from-[var(--color-punkt-green)] to-emerald-500 text-black w-10 h-10 lg:w-auto lg:px-4 lg:py-2 rounded-full transition-all hover:scale-105 cursor-pointer relative z-50 shadow-lg"
+        >
+          <Plus size={18} />
+          <span className="hidden lg:block text-sm font-bold">תזמון חדש</span>
+        </button>
+      </div>
+    </header>
+  );
+}
+</file>
+
+<file path="src/types.ts">
+export interface ScheduledMessage {
+  id: string;
+  wa_message_id: string;
+  scheduled_at: string;
+  content: string;
+  media_type: "text" | "image" | "video";
+  media_url?: string;
+  status: "scheduled" | "sent" | "canceled";
+  category?: string;
+  group_id?: string;
+  bot_confirmed?: boolean; // האם הבוט אישר
+  created_at: string; // זמן יצירת ההודעה (כדי לחשב את ה-5 דקות)
+}
+
+export interface TikTokPoolLink {
+  id: string;
+  url: string;
+  notes: string;
+  status: string;
+  created_at: string;
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.5.0",
+    "vite": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.4",
+    "autoprefixer": "^10.4.21",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
+</file>
+
 <file path="src/components/layout/Sidebar.tsx">
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -620,6 +815,7 @@ import {
   Inbox,
   X,
   Terminal,
+  Repeat,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -704,6 +900,13 @@ export function Sidebar({
                 onClick={() => handleNavClick("gantt")}
               />
               <NavItem
+                icon={<Repeat size={20} />}
+                label="תזמונים קבועים"
+                active={activeView === "recurring"}
+                onClick={() => handleNavClick("recurring")}
+              />
+
+              <NavItem
                 icon={<Inbox size={20} />}
                 label="מאגר טיקטוק"
                 active={activeView === "tiktok-pool"}
@@ -756,75 +959,6 @@ function NavItem({ icon, label, active = false, onClick }: any) {
       <span className="font-bold text-sm">{label}</span>
     </button>
   );
-}
-</file>
-
-<file path="src/types.ts">
-export interface ScheduledMessage {
-  id: string;
-  wa_message_id: string;
-  scheduled_at: string;
-  content: string;
-  media_type: "text" | "image" | "video";
-  media_url?: string;
-  status: "scheduled" | "sent" | "canceled";
-  category?: string;
-  group_id?: string;
-  bot_confirmed?: boolean; // האם הבוט אישר
-  created_at: string; // זמן יצירת ההודעה (כדי לחשב את ה-5 דקות)
-}
-
-export interface TikTokPoolLink {
-  id: string;
-  url: string;
-  notes: string;
-  status: string;
-  created_at: string;
-}
-</file>
-
-<file path="package.json">
-{
-  "name": "react-example",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview",
-    "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@google/genai": "^1.29.0",
-    "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-popover": "^1.1.15",
-    "@radix-ui/react-slot": "^1.2.4",
-    "@radix-ui/react-tooltip": "^1.2.8",
-    "@tailwindcss/vite": "^4.1.14",
-    "@vitejs/plugin-react": "^5.0.4",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.1.0",
-    "dotenv": "^17.2.3",
-    "express": "^4.21.2",
-    "lucide-react": "^0.546.0",
-    "motion": "^12.23.24",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tailwind-merge": "^3.5.0",
-    "vite": "^6.2.0"
-  },
-  "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.4",
-    "autoprefixer": "^10.4.21",
-    "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
-  }
 }
 </file>
 
@@ -1673,12 +1807,56 @@ export function NewScheduleModal({
 
   const handleCreateSchedule = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (selectedGroup === "all" && GROUPS.length > 3) {
-      // עדיין שומרים על ההתראה, למרות שמעקף ה-VPS יסדר את הבעיה מאחורי הקלעים
-    }
 
     const formData = new FormData(e.currentTarget);
-    const timeStr = formData.get("time") as string;
+    const rawDate = ((formData.get("date") as string) || "").trim();
+    const timeStr = ((formData.get("time") as string) || "").trim();
+
+    // 1. חסימת הודעה ריקה
+    if (!textContent.trim() && !selectedFile && !fetchedMediaUrl) {
+      alert(
+        "⚠️ אי אפשר לתזמן הודעה ריקה! נא לכתוב טקסט, להעלות קובץ, או למשוך סרטון מטיקטוק.",
+      );
+      return;
+    }
+
+    // 2. המרת "היום" / "מחר" לתאריך במספרים (חובה לעשות את זה לפני בדיקת שבת)
+    let processedDate = rawDate;
+    if (rawDate === "היום") {
+      const today = new Date();
+      processedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}`;
+    } else if (rawDate === "מחר") {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      processedDate = `${String(tomorrow.getDate()).padStart(2, "0")}/${String(tomorrow.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    // 3. בדיקת שבת (עובדת כעת על התאריך המעובד)
+    if (processedDate && timeStr && recurringMode === "none" && !sendNow) {
+      const parts = processedDate.split(/[\/\.]/);
+      if (parts.length === 2) {
+        const day = parts[0];
+        const month = parts[1];
+        const curYear = new Date().getFullYear();
+        // אם החודש עבר, זה שייך לשנה הבאה
+        const year =
+          parseInt(month) < new Date().getMonth() + 1 ? curYear + 1 : curYear;
+
+        const scheduleDate = new Date(
+          `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${timeStr}:00`,
+        );
+        const dayOfWeek = scheduleDate.getDay();
+        const hour = scheduleDate.getHours();
+
+        if ((dayOfWeek === 5 && hour >= 16) || (dayOfWeek === 6 && hour < 18)) {
+          alert(
+            "⚠️ שים לב: אי אפשר לתזמן הודעות לזמן שבת קודש! המערכת שומרת שבת.",
+          );
+          return;
+        }
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -1784,9 +1962,20 @@ export function NewScheduleModal({
             payload.append("sendNow", sendNow.toString());
             payload.append("isStatus", isStatus.toString());
             payload.append("pause", pauseOption);
-            payload.append("date", (formData.get("date") as string) || "");
-            payload.append("time", timeStr || "");
 
+            // --- המרה אוטומטית של מילים לתאריכים עבור ZingeR ---
+            let processedDate = ((formData.get("date") as string) || "").trim();
+            if (processedDate === "היום") {
+              const today = new Date();
+              processedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}`;
+            } else if (processedDate === "מחר") {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              processedDate = `${String(tomorrow.getDate()).padStart(2, "0")}/${String(tomorrow.getMonth() + 1).padStart(2, "0")}`;
+            }
+
+            payload.append("date", processedDate);
+            payload.append("time", timeStr || "");
             if (mUrl) {
               payload.append("mediaUrl", mUrl);
             }
@@ -2413,6 +2602,36 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
     });
   };
 
+  const handleDeleteSchedule = async () => {
+    if (!selectedMessage) return;
+
+    const isZinger =
+      selectedMessage.group_id && selectedMessage.group_id !== "punkt_foryou";
+
+    const confirmMsg = isZinger
+      ? "⚠️ שים לב! מחיקה מכאן תסיר את ההודעה מהלוח בלבד.\nמכיוון שזה זינגר, חובה עליך לשלוח גם פקודת #ביטול בקבוצת הווטסאפ!\nהאם להמשיך?"
+      : "האם אתה בטוח שברצונך למחוק תזמון זה לצמיתות?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await fetch(
+        "https://three-of-day-bp4b.onrender.com/api/schedules/delete",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: selectedMessage.id }),
+        },
+      );
+
+      // מעדכן את התצוגה מקומית כדי שלא נצטרך לרענן את כל הדף
+      selectedMessage.status = "canceled";
+      setSelectedMessage(null);
+    } catch (e) {
+      alert("שגיאה במחיקה");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -2817,12 +3036,20 @@ export function GanttChart({ messages, isLoading }: GanttChartProps) {
                       is24hFormat,
                     )}
                   </div>
-                  <button
-                    onClick={() => setSelectedMessage(null)}
-                    className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-xl hover:bg-white/5 transition-colors"
-                  >
-                    <X size={24} />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDeleteSchedule}
+                      className="px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/30 rounded-xl hover:bg-red-500/20 text-sm font-bold transition-colors"
+                    >
+                      מחק תזמון
+                    </button>
+                    <button
+                      onClick={() => setSelectedMessage(null)}
+                      className="p-2 text-[var(--color-punkt-muted)] hover:text-white rounded-xl hover:bg-white/5 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 pb-2">
@@ -3043,6 +3270,7 @@ import { GanttChart } from "./components/GanttChart";
 import { TikTokPoolView } from "./components/views/TikTokPoolView";
 import { NewScheduleModal } from "./components/modals/NewScheduleModal";
 import { BotCommandsView } from "./components/views/BotCommandsView";
+import { RecurringSchedulesView } from "./components/views/RecurringSchedulesView";
 
 // ==========================================
 // Main App Component
@@ -3051,7 +3279,12 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeView, setActiveView] = useState<
-    "dashboard" | "gantt" | "tiktok-pool" | "commands" | "settings"
+    | "dashboard"
+    | "gantt"
+    | "tiktok-pool"
+    | "recurring"
+    | "commands"
+    | "settings"
   >("dashboard");
   // Data
   const [messages, setMessages] = useState<ScheduledMessage[]>([]);
@@ -3166,6 +3399,8 @@ export default function App() {
         {activeView === "tiktok-pool" && (
           <TikTokPoolView onScheduleLink={openNewScheduleWithLink} />
         )}
+
+        {activeView === "recurring" && <RecurringSchedulesView />}
 
         {activeView === "commands" && <BotCommandsView />}
 

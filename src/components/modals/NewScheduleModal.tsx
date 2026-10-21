@@ -5,8 +5,6 @@ import {
   Send,
   Loader2,
   Paperclip,
-  Zap,
-  EyeOff,
   Link2,
   RefreshCw,
   UploadCloud,
@@ -67,6 +65,7 @@ export function NewScheduleModal({
   const [isFetchingTiktok, setIsFetchingTiktok] = useState(false);
   const [fetchedMediaUrl, setFetchedMediaUrl] = useState("");
   const [originalTiktokDesc, setOriginalTiktokDesc] = useState("");
+  const [socialAuthorName, setSocialAuthorName] = useState("");
   const [pendingLinks, setPendingLinks] = useState<TikTokPoolLink[]>([]);
   const [isLoadingPool, setIsLoadingPool] = useState(false);
   const [selectedPoolLinkId, setSelectedPoolLinkId] = useState<string | null>(
@@ -142,7 +141,7 @@ export function NewScheduleModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: tiktokUrl.trim() }), // התיקון: ניקוי הקישור
+          body: JSON.stringify({ url: tiktokUrl.trim() }),
         },
       );
       const data = await res.json();
@@ -156,6 +155,7 @@ export function NewScheduleModal({
       );
       setFetchedMediaUrl(data.mediaUrl);
       setOriginalTiktokDesc(data.originalDesc);
+      setSocialAuthorName(data.authorName || "");
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -164,6 +164,7 @@ export function NewScheduleModal({
   };
 
   const handleRegenerateTiktokText = async () => {
+    if (!originalTiktokDesc) return;
     setIsFetchingTiktok(true);
     try {
       const res = await fetch(
@@ -171,7 +172,10 @@ export function NewScheduleModal({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ desc: originalTiktokDesc }),
+          body: JSON.stringify({
+            desc: originalTiktokDesc,
+            authorName: socialAuthorName,
+          }),
         },
       );
       const data = await res.json();
@@ -212,15 +216,13 @@ export function NewScheduleModal({
     const rawDate = ((formData.get("date") as string) || "").trim();
     const timeStr = ((formData.get("time") as string) || "").trim();
 
-    // 1. חסימת הודעה ריקה
     if (!textContent.trim() && !selectedFile && !fetchedMediaUrl) {
       alert(
-        "⚠️ אי אפשר לתזמן הודעה ריקה! נא לכתוב טקסט, להעלות קובץ, או למשוך סרטון מטיקטוק.",
+        "⚠️ אי אפשר לתזמן הודעה ריקה! נא לכתוב טקסט, להעלות קובץ, או למשוך סרטון מסושיאל.",
       );
       return;
     }
 
-    // 2. המרת "היום" / "מחר" לתאריך במספרים (חובה לעשות את זה לפני בדיקת שבת)
     let processedDate = rawDate;
     if (rawDate === "היום") {
       const today = new Date();
@@ -231,14 +233,12 @@ export function NewScheduleModal({
       processedDate = `${String(tomorrow.getDate()).padStart(2, "0")}/${String(tomorrow.getMonth() + 1).padStart(2, "0")}`;
     }
 
-    // 3. בדיקת שבת (עובדת כעת על התאריך המעובד)
     if (processedDate && timeStr && recurringMode === "none" && !sendNow) {
       const parts = processedDate.split(/[\/\.]/);
       if (parts.length === 2) {
         const day = parts[0];
         const month = parts[1];
         const curYear = new Date().getFullYear();
-        // אם החודש עבר, זה שייך לשנה הבאה
         const year =
           parseInt(month) < new Date().getMonth() + 1 ? curYear + 1 : curYear;
 
@@ -297,13 +297,11 @@ export function NewScheduleModal({
         return data.url;
       };
 
-      // העלאת קובץ למאגר AWS לפני השליחה כדי למנוע תלות ב-Supabase
       let mUrl = fetchedMediaUrl;
       if (uploadMode === "manual" && selectedFile) {
         mUrl = await uploadManualFile();
       }
 
-      // 1. טיפול בקבוצת פונקט (לולאות בבאקאנד שלנו)
       if (
         recurringMode !== "none" &&
         (selectedGroup === "punkt_foryou" || selectedGroup === "all")
@@ -332,7 +330,6 @@ export function NewScheduleModal({
         );
       }
 
-      // 2. טיפול רגיל או זינגר (קבוצות אחרות)
       if (selectedGroup !== "punkt_foryou") {
         setProgressMsg("שולח פקודה ל-ZingeR...");
         const targets =
@@ -355,7 +352,6 @@ export function NewScheduleModal({
               },
             );
           } else {
-            // הוספת date ו-time החסרים + שימוש ב-mediaUrl במקום file
             const payload = new FormData();
             payload.append("groupId", target.id);
             payload.append("content", finalContent);
@@ -363,7 +359,6 @@ export function NewScheduleModal({
             payload.append("isStatus", isStatus.toString());
             payload.append("pause", pauseOption);
 
-            // --- המרה אוטומטית של מילים לתאריכים עבור ZingeR ---
             let processedDate = ((formData.get("date") as string) || "").trim();
             if (processedDate === "היום") {
               const today = new Date();
@@ -386,16 +381,14 @@ export function NewScheduleModal({
             );
           }
         }
-      }
-      // 3. טיפול רגיל (חד פעמי) לפונקט
-      else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
+      } else if (selectedGroup === "punkt_foryou" && recurringMode === "none") {
         setProgressMsg("שולח למכשיר...");
         formData.append("sendNow", sendNow.toString());
         formData.append("content", finalContent);
 
         if (mUrl) {
           formData.append("mediaUrl", mUrl);
-          formData.delete("file"); // מסירים את הקובץ הפיזי, שולחים רק לינק
+          formData.delete("file");
         }
 
         await fetch(
@@ -404,7 +397,6 @@ export function NewScheduleModal({
         );
       }
 
-      // טיפול במחיקת לינק מהמאגר
       if (uploadMode === "tiktok" && selectedPoolLinkId) {
         await fetch(
           "https://three-of-day-bp4b.onrender.com/api/tiktok/pool/mark-used",
@@ -664,7 +656,7 @@ export function NewScheduleModal({
               className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${uploadMode === "tiktok" ? "bg-[var(--color-punkt-surface)] text-[var(--color-punkt-green)] shadow-md" : "text-[var(--color-punkt-muted)]"}`}
             >
               <div className="flex items-center justify-center gap-2">
-                <Link2 size={16} /> מטיקטוק
+                <Link2 size={16} /> מסושיאל
               </div>
             </button>
             <button
@@ -683,26 +675,37 @@ export function NewScheduleModal({
               <div className="bg-[var(--color-punkt-surface-hover)] p-4 rounded-xl border border-[var(--color-punkt-border)]">
                 <div className="flex items-center justify-between mb-3 border-b border-[var(--color-punkt-border)] pb-2">
                   <h4 className="text-sm font-bold flex items-center gap-2 text-white">
-                    <Inbox size={16} className="text-pink-400" /> מאגר טיקטוק
+                    <Inbox size={16} className="text-pink-400" /> מאגר סושיאל
+                    (טיקטוק / אינסטגרם)
                   </h4>
                 </div>
                 <div className="max-h-32 overflow-y-auto custom-scrollbar space-y-2 pr-1">
                   {pendingLinks.length === 0 ? (
                     <div className="text-center text-[var(--color-punkt-muted)] text-xs">
-                      אין קישורים.
+                      אין קישורים ממתינים במאגר.
                     </div>
                   ) : (
-                    pendingLinks.map((link) => (
-                      <div
-                        key={link.id}
-                        onClick={() => handleSelectPoolLink(link)}
-                        className={`p-2 rounded-lg border text-xs cursor-pointer ${selectedPoolLinkId === link.id ? "border-[var(--color-punkt-green)] bg-[var(--color-punkt-green)]/10" : "border-gray-600"}`}
-                      >
-                        <div className="truncate" dir="ltr">
-                          {link.url}
+                    pendingLinks.map((link) => {
+                      const isIg =
+                        link.url.includes("instagram.com") ||
+                        link.url.includes("instagr.am");
+                      return (
+                        <div
+                          key={link.id}
+                          onClick={() => handleSelectPoolLink(link)}
+                          className={`p-2 rounded-lg border text-xs cursor-pointer flex items-center justify-between gap-2 ${selectedPoolLinkId === link.id ? "border-[var(--color-punkt-green)] bg-[var(--color-punkt-green)]/10" : "border-gray-600"}`}
+                        >
+                          <div className="truncate flex-1" dir="ltr">
+                            {link.url}
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${isIg ? "bg-pink-500/20 text-pink-400" : "bg-cyan-500/20 text-cyan-400"}`}
+                          >
+                            {isIg ? "IG" : "TT"}
+                          </span>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -712,7 +715,7 @@ export function NewScheduleModal({
                   type="url"
                   value={tiktokUrl}
                   onChange={(e) => setTiktokUrl(e.target.value)}
-                  placeholder="לינק טיקטוק..."
+                  placeholder="הדבק קישור מטיקטוק או מאינסטגרם..."
                   className="flex-1 bg-[var(--color-punkt-bg)] border border-[var(--color-punkt-border)] rounded-xl py-3 px-4 text-white focus:outline-none text-left"
                   dir={tiktokUrl ? "ltr" : "rtl"}
                 />
@@ -730,7 +733,22 @@ export function NewScheduleModal({
                 </button>
               </div>
 
-              {/* תצוגה מקדימה של הטיקטוק */}
+              {originalTiktokDesc && (
+                <button
+                  type="button"
+                  onClick={handleRegenerateTiktokText}
+                  disabled={isFetchingTiktok}
+                  className="w-full bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] text-gray-300 text-xs font-bold py-2 rounded-xl hover:text-white flex items-center justify-center gap-2 transition"
+                >
+                  <RefreshCw
+                    size={14}
+                    className={isFetchingTiktok ? "animate-spin" : ""}
+                  />
+                  נסח טקסט מחדש עם AI
+                </button>
+              )}
+
+              {/* תצוגה מקדימה של המדיה מהסושיאל */}
               {fetchedMediaUrl && (
                 <div className="relative mt-4 rounded-xl overflow-hidden border border-[var(--color-punkt-green)]/30 flex justify-center bg-black">
                   {fetchedMediaUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (

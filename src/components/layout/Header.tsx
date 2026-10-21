@@ -21,9 +21,10 @@ export function Header({
   const viewTitles: any = {
     dashboard: "דשבורד ראשי",
     gantt: "לוח שידורים",
-    "tiktok-pool": "מאגר קישורים לטיקטוק",
+    "tiktok-pool": "מאגר קישורים לסושיאל",
     settings: "הגדרות מערכת",
     recurring: "ניהול תזמונים קבועים",
+    commands: "מרכז הפקודות",
   };
 
   return (

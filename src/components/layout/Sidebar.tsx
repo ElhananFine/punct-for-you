@@ -101,7 +101,7 @@ export function Sidebar({
 
               <NavItem
                 icon={<Inbox size={20} />}
-                label="מאגר טיקטוק"
+                label="מאגר סושיאל"
                 active={activeView === "tiktok-pool"}
                 onClick={() => handleNavClick("tiktok-pool")}
               />

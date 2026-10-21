@@ -20,7 +20,6 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
   const [links, setLinks] = useState<TikTokPoolLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // States for adding a new link manually
   const [newUrl, setNewUrl] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -59,11 +58,11 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
       );
       const data = await res.json();
       if (data.status === "duplicate") {
-        alert(data.message); // התראת כפילות שמוחזרת מהשרת
+        alert(data.message);
       } else {
         setNewUrl("");
         setNewNotes("");
-        fetchLinks(); // רענון הרשימה לאחר הוספה
+        fetchLinks();
       }
     } catch (err) {
       alert("שגיאה בהוספת הקישור. ודא שהשרת פועל.");
@@ -117,10 +116,11 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-display font-bold">
-              מאגר קישורים ממתינים
+              מאגר קישורי סושיאל ממתינים (טיקטוק / אינסטגרם)
             </h3>
             <p className="text-sm text-[var(--color-punkt-muted)] mt-1">
-              כל קישור שנשלח לקבוצת הווטסאפ או מתווסף כאן, ימתין בתור לשיבוץ.
+              כל קישור מטיקטוק או מאינסטגרם שנשלח לקבוצת הווטסאפ או מתווסף כאן,
+              ימתין בתור לשיבוץ.
             </p>
           </div>
           <button
@@ -139,7 +139,7 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
         >
           <input
             type="url"
-            placeholder="https://www.tiktok.com/..."
+            placeholder="https://www.instagram.com/... או https://www.tiktok.com/..."
             required
             value={newUrl}
             onChange={(e) => setNewUrl(e.target.value)}
@@ -177,70 +177,83 @@ export function TikTokPoolView({ onScheduleLink }: TikTokPoolViewProps) {
           </div>
         ) : links.length === 0 ? (
           <div className="text-center bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-12 text-[var(--color-punkt-muted)]">
-            אין כרגע קישורים שממתינים לטיפול במאגר.
+            אין כרגע קישורי סושיאל שממתינים לטיפול במאגר.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {links.map((link) => (
-              <div
-                key={link.id}
-                className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-5 flex flex-col justify-between hover:border-[var(--color-punkt-green)]/50 transition"
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <span className="text-xs bg-[var(--color-punkt-bg)] px-2 py-1 rounded text-gray-400 font-mono">
-                      {format(parseISO(link.created_at), "dd MMM HH:mm", {
-                        locale: he,
-                      })}
-                    </span>
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-blue-400 hover:text-blue-300"
-                    >
-                      <ExternalLink size={16} />
-                    </a>
-                  </div>
-                  <div
-                    className="text-gray-300 text-sm font-mono truncate mb-2"
-                    dir="ltr"
-                  >
-                    {link.url}
-                  </div>
-                  <div className="bg-[var(--color-punkt-bg)] p-3 rounded-xl border border-[var(--color-punkt-border)] min-h-[60px] text-sm text-gray-200">
-                    {link.notes ? (
-                      <span>💬 {link.notes}</span>
-                    ) : (
-                      <span className="opacity-40 italic">ללא הערות</span>
-                    )}
-                  </div>
-                </div>
+            {links.map((link) => {
+              const isIg =
+                link.url.includes("instagram.com") ||
+                link.url.includes("instagr.am");
 
-                <div className="mt-4 flex gap-2 border-t border-[var(--color-punkt-border)] pt-4">
-                  <button
-                    onClick={() => onScheduleLink(link)}
-                    className="flex-1 bg-[var(--color-punkt-green)] text-black font-bold py-2 rounded-lg text-sm flex items-center justify-center gap-1 hover:opacity-90 transition"
-                  >
-                    <CalendarPlus size={16} /> תזמן
-                  </button>
-                  <button
-                    onClick={() => handleMarkUsed(link.id)}
-                    title="סמן כטופל (יעלים מכאן)"
-                    className="p-2 bg-[var(--color-punkt-surface-hover)] text-emerald-400 rounded-lg border border-[var(--color-punkt-border)] hover:bg-emerald-500/10 transition"
-                  >
-                    <CheckCircle size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(link.id)}
-                    title="מחק לצמיתות"
-                    className="p-2 bg-[var(--color-punkt-surface-hover)] text-red-400 rounded-lg border border-[var(--color-punkt-border)] hover:bg-red-500/10 transition"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+              return (
+                <div
+                  key={link.id}
+                  className="bg-[var(--color-punkt-surface)] border border-[var(--color-punkt-border)] rounded-2xl p-5 flex flex-col justify-between hover:border-[var(--color-punkt-green)]/50 transition"
+                >
+                  <div>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-[var(--color-punkt-bg)] px-2 py-1 rounded text-gray-400 font-mono">
+                          {format(parseISO(link.created_at), "dd MMM HH:mm", {
+                            locale: he,
+                          })}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${isIg ? "bg-pink-500/20 text-pink-400" : "bg-cyan-500/20 text-cyan-400"}`}
+                        >
+                          {isIg ? "Instagram" : "TikTok"}
+                        </span>
+                      </div>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-400 hover:text-blue-300"
+                      >
+                        <ExternalLink size={16} />
+                      </a>
+                    </div>
+                    <div
+                      className="text-gray-300 text-sm font-mono truncate mb-2"
+                      dir="ltr"
+                    >
+                      {link.url}
+                    </div>
+                    <div className="bg-[var(--color-punkt-bg)] p-3 rounded-xl border border-[var(--color-punkt-border)] min-h-[60px] text-sm text-gray-200">
+                      {link.notes ? (
+                        <span>💬 {link.notes}</span>
+                      ) : (
+                        <span className="opacity-40 italic">ללא הערות</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-2 border-t border-[var(--color-punkt-border)] pt-4">
+                    <button
+                      onClick={() => onScheduleLink(link)}
+                      className="flex-1 bg-[var(--color-punkt-green)] text-black font-bold py-2 rounded-lg text-sm flex items-center justify-center gap-1 hover:opacity-90 transition"
+                    >
+                      <CalendarPlus size={16} /> תזמן
+                    </button>
+                    <button
+                      onClick={() => handleMarkUsed(link.id)}
+                      title="סמן כטופל (יעלים מכאן)"
+                      className="p-2 bg-[var(--color-punkt-surface-hover)] text-emerald-400 rounded-lg border border-[var(--color-punkt-border)] hover:bg-emerald-500/10 transition"
+                    >
+                      <CheckCircle size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(link.id)}
+                      title="מחק לצמיתות"
+                      className="p-2 bg-[var(--color-punkt-surface-hover)] text-red-400 rounded-lg border border-[var(--color-punkt-border)] hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
